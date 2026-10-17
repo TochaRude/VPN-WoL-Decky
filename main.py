@@ -14,11 +14,11 @@ import decky
 def normalize_mac(mac_str: str) -> str:
     """Validate and normalize a MAC address to AA:BB:CC:DD:EE:FF format."""
     if not mac_str:
-        raise ValueError("MAC-Adresse darf nicht leer sein.")
+        raise ValueError("MAC address must not be empty.")
     clean = re.sub(r"[^0-9A-Fa-f]", "", mac_str).upper()
     if len(clean) != 12:
         raise ValueError(
-            f"Ungültige MAC-Adresse '{mac_str}'. Erwartet werden 12 Hex-Zeichen (z.B. AA:BB:CC:DD:EE:FF)."
+            f"Invalid MAC address '{mac_str}'. Expected 12 hex characters (e.g. AA:BB:CC:DD:EE:FF)."
         )
     return ":".join(clean[i : i + 2] for i in range(0, 12, 2))
 
@@ -31,7 +31,7 @@ def create_magic_packet(mac_str: str) -> bytes:
 
 
 def derive_subnet_broadcast(ip_str: str) -> Optional[str]:
-    """Derive a /24 subnet broadcast address from an IPv4 address (e.g. 192.168.178.20 -> 192.168.178.255)."""
+    """Derive a /24 subnet broadcast address from an IPv4 address (e.g. 192.168.1.20 -> 192.168.1.255)."""
     if not ip_str:
         return None
     try:
@@ -51,7 +51,7 @@ class Plugin:
 
     def _clean_env(self) -> Dict[str, str]:
         """
-        Return a sanitized environment dictionary for running host commands on CachyOS/SteamOS.
+        Return a sanitized environment dictionary for running host commands on SteamOS/CachyOS/Linux.
         Decky Loader runs inside a PyInstaller bundle that sets LD_LIBRARY_PATH, which can break
         host binaries like nmcli, ip, wg, or ping if not stripped.
         """
@@ -96,9 +96,9 @@ class Plugin:
             return proc.returncode or 0, stdout, stderr
         except asyncio.TimeoutError:
             decky.logger.warning(f"Command timed out after {timeout}s: {' '.join(cmd_args)}")
-            return 124, "", f"Zeitüberschreitung nach {int(timeout)}s bei Befehl: {' '.join(cmd_args)}"
+            return 124, "", f"Command timed out after {int(timeout)}s: {' '.join(cmd_args)}"
         except FileNotFoundError:
-            return 127, "", f"Befehl nicht gefunden: {cmd_args[0]}"
+            return 127, "", f"Command not found: {cmd_args[0]}"
         except Exception as e:
             decky.logger.error(f"Error running command {' '.join(cmd_args)}: {e}")
             return 1, "", str(e)
@@ -117,6 +117,12 @@ class Plugin:
                     default_settings.update(loaded)
             except Exception as e:
                 decky.logger.error(f"Failed to load settings.json: {e}")
+
+        # Ensure backward compatibility for targets saved with fritzbox_trigger
+        for target in default_settings.get("wol_targets", []):
+            if "wake_trigger" not in target:
+                target["wake_trigger"] = bool(target.get("fritzbox_trigger", True))
+
         self.settings = default_settings
 
     def _save_settings(self) -> None:
@@ -303,12 +309,11 @@ class Plugin:
         if not vpn_id or ":" not in vpn_id:
             return {
                 "success": False,
-                "error": f"Ungültige VPN-ID: {vpn_id}",
+                "error": f"Invalid VPN ID: {vpn_id}",
                 "vpns": await self.get_vpns(),
             }
 
         backend, identifier = vpn_id.split(":", 1)
-        action_word = "verbunden" if enable else "getrennt"
 
         if backend == "nm":
             cmd = ["nmcli", "connection", "up" if enable else "down", "uuid", identifier]
@@ -323,7 +328,7 @@ class Plugin:
                 rc, stdout, stderr = await self._run_cmd(cmd, timeout=20.0, privileged=True)
 
             if rc != 0:
-                err_msg = stderr or stdout or f"nmcli Fehlercode {rc}"
+                err_msg = stderr or stdout or f"nmcli exit code {rc}"
                 decky.logger.error(f"nmcli failed for {vpn_id}: {err_msg}")
                 return {
                     "success": False,
@@ -342,7 +347,7 @@ class Plugin:
                     privileged=True,
                 )
                 if rc2 != 0:
-                    err_msg = stderr or stdout or stderr2 or stdout2 or f"wg-quick Fehlercode {rc}"
+                    err_msg = stderr or stdout or stderr2 or stdout2 or f"wg-quick exit code {rc}"
                     decky.logger.error(f"wg-quick failed for {vpn_id}: {err_msg}")
                     return {
                         "success": False,
@@ -352,7 +357,7 @@ class Plugin:
         else:
             return {
                 "success": False,
-                "error": f"Unbekanntes VPN-Backend: {backend}",
+                "error": f"Unknown VPN backend: {backend}",
                 "vpns": await self.get_vpns(),
             }
 
@@ -361,7 +366,6 @@ class Plugin:
         vpns = await self.get_vpns()
         return {
             "success": True,
-            "message": f"VPN erfolgreich {action_word}.",
             "vpns": vpns,
         }
 
@@ -372,12 +376,14 @@ class Plugin:
     async def save_wol_target(self, target: Dict[str, Any]) -> Dict[str, Any]:
         """Create or update a Wake-on-LAN PC profile."""
         try:
-            name = (target.get("name") or "").strip() or "Mein PC"
+            name = (target.get("name") or "").strip() or "PC"
             mac = normalize_mac(target.get("mac", ""))
             ip = (target.get("ip") or "").strip()
             broadcast_ip = (target.get("broadcast_ip") or "").strip()
             vpn_id = (target.get("vpn_id") or "").strip()
-            fritzbox_trigger = bool(target.get("fritzbox_trigger", True))
+            wake_trigger = bool(
+                target.get("wake_trigger", target.get("fritzbox_trigger", True))
+            )
 
             try:
                 port = int(target.get("port", 9))
@@ -392,7 +398,7 @@ class Plugin:
                 except ValueError:
                     return {
                         "success": False,
-                        "error": f"Ungültige IPv4-Adresse: '{ip}'",
+                        "error": f"Invalid IPv4 address: '{ip}'",
                         "targets": self.settings.get("wol_targets", []),
                     }
 
@@ -402,7 +408,7 @@ class Plugin:
                 except ValueError:
                     return {
                         "success": False,
-                        "error": f"Ungültige Broadcast-IP: '{broadcast_ip}'",
+                        "error": f"Invalid broadcast IP: '{broadcast_ip}'",
                         "targets": self.settings.get("wol_targets", []),
                     }
 
@@ -415,7 +421,7 @@ class Plugin:
                 "broadcast_ip": broadcast_ip,
                 "port": port,
                 "vpn_id": vpn_id,
-                "fritzbox_trigger": fritzbox_trigger,
+                "wake_trigger": wake_trigger,
             }
 
             targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
@@ -532,10 +538,12 @@ class Plugin:
                 except Exception:
                     pass
 
-    async def _trigger_fritzbox_wake_on_access(self, ip: str, bind_iface: Optional[str] = None) -> None:
+    async def _trigger_router_wake_on_access(
+        self, ip: str, bind_iface: Optional[str] = None
+    ) -> None:
         """
-        Trigger FritzBox 'Computer automatisch starten, sobald darauf zugegriffen wird'
-        and stimulate ARP resolution by sending ICMP Echo + quick TCP SYN probes to common PC ports.
+        Stimulate router ARP resolution and trigger router 'Wake on Access' features
+        by sending ICMP Echo + quick TCP SYN probes to common PC ports.
         """
         if not ip:
             return
@@ -578,12 +586,12 @@ class Plugin:
         - Automatically connects the assigned VPN if `auto_connect_vpn` is True.
         - Sends UDP Magic Packets (Unicast to PC IP, Directed Subnet Broadcast, and Global Broadcast)
           across both kernel-routed sockets and SO_BINDTODEVICE on the VPN interface.
-        - Optionally triggers FritzBox Auto-Wake via ICMP Ping + TCP SYN probes.
+        - Optionally triggers Router Auto-Wake / ARP resolution via ICMP Ping + TCP SYN probes.
         """
         targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
         target = next((t for t in targets if t.get("id") == target_id), None)
         if not target:
-            return {"success": False, "error": "PC-Profil wurde nicht gefunden."}
+            return {"success": False, "error": "PC profile not found."}
 
         try:
             magic_packet = create_magic_packet(target.get("mac", ""))
@@ -600,7 +608,6 @@ class Plugin:
         if vpn_id:
             linked_vpn = next((v for v in vpns if v.get("id") == vpn_id), None)
             if not linked_vpn:
-                # Fallback match by name if UUID changed
                 linked_vpn = next((v for v in vpns if v.get("name") == vpn_id), None)
 
             if linked_vpn:
@@ -612,7 +619,7 @@ class Plugin:
                     if not res.get("success"):
                         return {
                             "success": False,
-                            "error": f"VPN '{linked_vpn.get('name')}' konnte nicht gestartet werden: {res.get('error')}",
+                            "error": f"Failed to start VPN '{linked_vpn.get('name')}': {res.get('error')}",
                             "vpns": res.get("vpns", vpns),
                         }
                     vpn_was_activated = True
@@ -631,7 +638,6 @@ class Plugin:
 
                 active_vpn_iface = linked_vpn.get("interface") or None
         else:
-            # If no specific VPN is assigned, check if any VPN is currently active and grab its interface
             first_active = next((v for v in vpns if v.get("active") and v.get("interface")), None)
             if first_active:
                 active_vpn_iface = first_active.get("interface")
@@ -643,9 +649,7 @@ class Plugin:
 
         dest_ips: List[str] = []
         if pc_ip:
-            # Direct Unicast to PC IP (routed over WireGuard L3 tunnel directly to FritzBox)
             dest_ips.append(pc_ip)
-            # Derived /24 subnet broadcast (e.g. 192.168.178.255)
             subnet_bcast = derive_subnet_broadcast(pc_ip)
             if subnet_bcast and subnet_bcast not in dest_ips:
                 dest_ips.append(subnet_bcast)
@@ -653,7 +657,6 @@ class Plugin:
         if explicit_bcast and explicit_bcast not in dest_ips:
             dest_ips.append(explicit_bcast)
 
-        # Also include active VPN subnet broadcast if available
         if active_vpn_iface:
             vpn_obj = next((v for v in vpns if v.get("interface") == active_vpn_iface), None)
             if vpn_obj and vpn_obj.get("broadcast"):
@@ -664,26 +667,26 @@ class Plugin:
         if "255.255.255.255" not in dest_ips:
             dest_ips.append("255.255.255.255")
 
-        # Deduplicated UDP ports (configured port + standard WoL ports 9 and 7)
         ports: List[int] = []
         for p in (configured_port, 9, 7):
             if 1 <= p <= 65535 and p not in ports:
                 ports.append(p)
 
-        # 3. Optional FritzBox Auto-Wake trigger (ICMP Ping + TCP SYN probes)
-        if target.get("fritzbox_trigger", True) and pc_ip:
-            await self._trigger_fritzbox_wake_on_access(pc_ip, active_vpn_iface)
+        # 3. Optional Router Auto-Wake / ARP trigger (ICMP Ping + TCP SYN probes)
+        use_wake_trigger = bool(
+            target.get("wake_trigger", target.get("fritzbox_trigger", True))
+        )
+        if use_wake_trigger and pc_ip:
+            await self._trigger_router_wake_on_access(pc_ip, active_vpn_iface)
 
-        # 4. Send Magic Packets in 3 bursts for reliability over WireGuard / Wi-Fi
+        # 4. Send Magic Packets in 3 bursts for reliability over VPN / Wi-Fi
         sent_endpoints = set()
 
         def _send_burst() -> None:
             for dip in dest_ips:
                 for dport in ports:
-                    # Standard kernel-routed UDP send
                     if self._send_udp_packet(magic_packet, dip, dport, bind_iface=None):
                         sent_endpoints.add(f"{dip}:{dport}")
-                    # Interface-bound UDP send (if VPN interface is active)
                     if active_vpn_iface:
                         if self._send_udp_packet(
                             magic_packet, dip, dport, bind_iface=active_vpn_iface
@@ -698,19 +701,16 @@ class Plugin:
         if not sent_endpoints:
             return {
                 "success": False,
-                "error": "Wake-on-LAN Paket konnte über keine Netzwerkschnittstelle gesendet werden.",
+                "error": "Could not send Wake-on-LAN packet on any network interface.",
                 "vpns": vpns,
             }
 
         target_name = target.get("name", "PC")
-        msg = f"Wake-on-LAN an '{target_name}' ({target.get('mac')}) gesendet."
-        if vpn_was_activated:
-            msg = f"VPN aktiviert & {msg}"
-
-        decky.logger.info(f"{msg} Endpoints: {sorted(sent_endpoints)}")
+        decky.logger.info(
+            f"Sent WoL to '{target_name}' ({target.get('mac')}). Endpoints: {sorted(sent_endpoints)}"
+        )
         return {
             "success": True,
-            "message": msg,
             "vpn_activated": vpn_was_activated,
             "endpoints": sorted(sent_endpoints),
             "vpns": vpns,

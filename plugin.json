@@ -5,7 +5,7 @@
   "api_version": 1,
   "publish": {
     "tags": ["vpn", "wireguard", "wol", "wake-on-lan", "network", "root"],
-    "description": "Liest vorhandene VPN-Verbindungen (NetworkManager & WireGuard) zum Umschalten aus und weckt PCs per Wake-on-LAN über das VPN (inkl. FritzBox-Unterstützung).",
+    "description": "Manage and toggle VPN connections (NetworkManager & WireGuard) and wake up PCs via Wake-on-LAN over VPN or local network.",
     "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/decky-plugin-template"
   }
 }

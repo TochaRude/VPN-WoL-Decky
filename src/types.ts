@@ -19,7 +19,8 @@ export interface WolTarget {
   broadcast_ip: string;
   port: number;
   vpn_id: string;
-  fritzbox_trigger: boolean;
+  wake_trigger: boolean;
+  fritzbox_trigger?: boolean;
 }
 
 export interface PingStatus {
