@@ -4,6 +4,10 @@ A Decky Loader plugin for **SteamOS / CachyOS / Bazzite / Linux Handhelds** (Ste
 
 🌍 **Multi-language support:** Automatically adapts to your Steam / system language (**English, Deutsch, Français, Español, Italiano, Português, Polski, Русский**).
 
+> 💡 **About this project / Über dieses Projekt:**
+> - **EN:** I had the idea for this plugin because I couldn't find any existing Decky plugin that lets you easily switch VPN connections and wake up your home PC via Wake-on-LAN over that VPN. Because of that, I decided to vibe-code it myself — everyone is warmly welcome to test, use, and share feedback!
+> - **DE:** Ich hatte die Idee zu diesem Plugin, da ich leider selbst kein passendes Decky-Plugin gefunden habe, mit dem man vorhandene VPNs umschalten und darüber seinen PC per Wake-on-LAN aufwecken kann. Aus diesem Grund habe ich es kurzerhand selbst per Vibe-Coding umgesetzt – jeder ist herzlich eingeladen, es zu testen und zu nutzen!
+
 ---
 
 ## Features (English)
@@ -29,7 +33,7 @@ A Decky Loader plugin for **SteamOS / CachyOS / Bazzite / Linux Handhelds** (Ste
   - Optional **Router Auto-Wake / ARP Trigger**: Sends ICMP Ping & TCP SYN probes to the target IP to refresh router ARP caches or trigger router *Wake-on-Access* features when waking a PC that has been powered off for a long time.
 
 ### Installation
-1. Download `VPN-WoL.zip` from Releases (or from this repository).
+1. Download **[`VPN-WoL.zip`](https://github.com/TochaRude/VPN-WoL-Decky/releases/latest)** from the **[Releases](https://github.com/TochaRude/VPN-WoL-Decky/releases)** section.
 2. In Steam Game Mode, open **Decky Loader Settings** -> **General** -> enable **Developer Mode**.
 3. Go to **Developer** -> **Install Plugin from ZIP File** and select `VPN-WoL.zip`.
    *(Alternatively, run `./install.sh` from a terminal).*
@@ -55,7 +59,7 @@ A Decky Loader plugin for **SteamOS / CachyOS / Bazzite / Linux Handhelds** (Ste
   - Kombiniert UDP-Magic-Packets (Unicast, Subnet-Broadcast & `SO_BINDTODEVICE`) mit optionalen Ping-/TCP-Impulsen, damit Router den ARP-Cache auflösen bzw. *Wake-on-Access*-Funktionen (automatisches Starten bei Zugriff aus dem VPN) zuverlässig auslösen.
 
 ### Installation
-1. Lade `VPN-WoL.zip` herunter.
+1. Lade **[`VPN-WoL.zip`](https://github.com/TochaRude/VPN-WoL-Decky/releases/latest)** im Bereich **[Releases](https://github.com/TochaRude/VPN-WoL-Decky/releases)** herunter.
 2. Öffne im Steam Game Mode die **Decky Loader Einstellungen** -> aktiviere unter **General** den **Developer Mode**.
 3. Wähle unter **Developer** -> **Install Plugin from ZIP File** die Datei `VPN-WoL.zip` aus (oder führe `./install.sh` im Terminal aus).
 
