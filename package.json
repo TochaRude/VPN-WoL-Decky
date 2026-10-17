@@ -1,7 +1,7 @@
 {
   "name": "vpn-wol",
   "version": "1.0.0",
-  "description": "Decky Loader Plugin for switching VPNs (NetworkManager & WireGuard) and sending Wake-on-LAN packets over VPN.",
+  "description": "Decky Loader Plugin for switching VPNs (NetworkManager & WireGuard) and sending Wake-on-LAN packets over VPN or local network.",
   "type": "module",
   "scripts": {
     "build": "rollup -c",
@@ -14,7 +14,8 @@
     "wireguard",
     "wake-on-lan",
     "wol",
-    "fritzbox",
+    "networkmanager",
+    "steamos",
     "cachyos",
     "steam-deck",
     "legion-go"

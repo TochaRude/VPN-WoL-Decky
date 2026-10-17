@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect, useRef, useState } from "react";
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ButtonItem,
   DialogButton,
@@ -18,6 +18,7 @@ import {
   sendWol,
   setVpnState,
 } from "./api";
+import { formatString, getTranslations } from "./i18n";
 import { PingStatus, VpnConnection, WolTarget } from "./types";
 import { TargetModal } from "./components/TargetModal";
 
@@ -39,6 +40,7 @@ const PluginIcon: FC = () => (
 );
 
 const Content: FC = () => {
+  const t = useMemo(() => getTranslations(), []);
   const isVisible = useQuickAccessVisible ? useQuickAccessVisible() : true;
 
   const [vpns, setVpns] = useState<VpnConnection[]>([]);
@@ -99,21 +101,20 @@ const Content: FC = () => {
       if (res.success) {
         toaster.toast({
           title: `VPN: ${vpn.name}`,
-          body: enable ? "Verbindung hergestellt." : "Verbindung getrennt.",
+          body: enable ? t.toastVpnConnected : t.toastVpnDisconnected,
         });
-        // Refresh ping statuses shortly after VPN switch
         setTimeout(() => {
           if (mountedRef.current) refreshState(false);
         }, 800);
       } else {
         toaster.toast({
-          title: `VPN-Fehler (${vpn.name})`,
-          body: res.error || "Konnte VPN-Status nicht ändern.",
+          title: `${t.toastVpnErrorTitle} (${vpn.name})`,
+          body: res.error || "Error",
         });
       }
     } catch (e: any) {
       toaster.toast({
-        title: `VPN-Fehler (${vpn.name})`,
+        title: `${t.toastVpnErrorTitle} (${vpn.name})`,
         body: String(e?.message || e),
       });
     } finally {
@@ -139,8 +140,8 @@ const Content: FC = () => {
           if (p.online) {
             setWakingTargetIds((prev) => ({ ...prev, [target.id]: false }));
             toaster.toast({
-              title: `${target.name} ist online!`,
-              body: `Antwort von ${target.ip}${
+              title: formatString(t.toastPcOnlineTitle, { name: target.name }),
+              body: `${formatString(t.toastPcOnlineBody, { ip: target.ip })}${
                 p.latency_ms !== null ? ` (${p.latency_ms} ms)` : ""
               }`,
             });
@@ -154,7 +155,7 @@ const Content: FC = () => {
         setWakingTargetIds((prev) => ({ ...prev, [target.id]: false }));
       }
     },
-    []
+    [t]
   );
 
   const handleWakeTarget = async (target: WolTarget) => {
@@ -166,15 +167,15 @@ const Content: FC = () => {
       }
       if (res.success) {
         toaster.toast({
-          title: "Wake-on-LAN gesendet",
-          body: res.message || `Magic Packet an ${target.name} gesendet.`,
+          title: t.toastWolSentTitle,
+          body: formatString(t.toastWolSentBody, { name: target.name }),
         });
         watchHostWakeup(target);
       } else {
         setWakingTargetIds((prev) => ({ ...prev, [target.id]: false }));
         toaster.toast({
-          title: "Wake-on-LAN fehlgeschlagen",
-          body: res.error || "Unbekannter Fehler beim Senden.",
+          title: t.toastWolFailedTitle,
+          body: res.error || "Error",
         });
       }
     } catch (e: any) {
@@ -182,7 +183,7 @@ const Content: FC = () => {
         setWakingTargetIds((prev) => ({ ...prev, [target.id]: false }));
       }
       toaster.toast({
-        title: "Wake-on-LAN Fehler",
+        title: t.toastWolFailedTitle,
         body: String(e?.message || e),
       });
     }
@@ -220,11 +221,11 @@ const Content: FC = () => {
   return (
     <div>
       {/* 1. VPN Section */}
-      <PanelSection title="VPN-Verbindungen" spinner={loading}>
+      <PanelSection title={t.vpnSectionTitle} spinner={loading}>
         {vpns.length === 0 && !loading ? (
           <PanelSectionRow>
             <div style={{ fontSize: "12px", color: "#969696", padding: "4px 0" }}>
-              Keine VPN-Profile in NetworkManager (nmcli) oder /etc/wireguard gefunden.
+              {t.noVpnsFound}
             </div>
           </PanelSectionRow>
         ) : (
@@ -236,12 +237,14 @@ const Content: FC = () => {
               ? "#2ecc71"
               : "#7f8c8d";
             const statusText = isSwitching
-              ? "Schalte um..."
+              ? t.statusSwitching
               : vpn.active
-              ? `Verbunden${vpn.ip ? ` • ${vpn.ip}` : ""}${
+              ? `${t.statusConnected}${vpn.ip ? ` • ${vpn.ip}` : ""}${
                   vpn.interface ? ` (${vpn.interface})` : ""
                 }`
-              : `Getrennt • ${vpn.backend === "nmcli" ? "NetworkManager" : "wg-quick"}`;
+              : `${t.statusDisconnected} • ${
+                  vpn.backend === "nmcli" ? "NetworkManager" : "wg-quick"
+                }`;
 
             return (
               <PanelSectionRow key={vpn.id}>
@@ -277,17 +280,17 @@ const Content: FC = () => {
             onClick={() => refreshState(true)}
             disabled={loading || switchingVpnId !== null}
           >
-            Status aktualisieren
+            {t.refreshStatus}
           </ButtonItem>
         </PanelSectionRow>
       </PanelSection>
 
       {/* 2. Wake-on-LAN Section */}
-      <PanelSection title="Wake-on-LAN (PCs)">
+      <PanelSection title={t.wolSectionTitle}>
         {targets.length === 0 ? (
           <PanelSectionRow>
             <div style={{ fontSize: "12px", color: "#969696", padding: "4px 0" }}>
-              Noch kein PC-Profil eingerichtet. Füge deinen PC hinzu, um ihn über das VPN aufzuwecken.
+              {t.noTargetsConfigured}
             </div>
           </PanelSectionRow>
         ) : (
@@ -306,12 +309,12 @@ const Content: FC = () => {
               ? "#f39c12"
               : "#95a5a6";
             const badgeText = isOnline
-              ? `Online${ping?.latency_ms != null ? ` (${ping.latency_ms} ms)` : ""}`
+              ? `${t.badgeOnline}${ping?.latency_ms != null ? ` (${ping.latency_ms} ms)` : ""}`
               : isWaking
-              ? "Wecke auf..."
+              ? t.badgeWaking
               : target.ip
-              ? "Offline"
-              : "Bereit";
+              ? t.badgeOffline
+              : t.badgeReady;
 
             return (
               <PanelSectionRow key={target.id}>
@@ -374,7 +377,7 @@ const Content: FC = () => {
                     {linkedVpn && (
                       <div style={{ color: linkedVpn.active ? "#7bed9f" : "#eccc68" }}>
                         VPN: {linkedVpn.name} (
-                        {linkedVpn.active ? "Verbunden" : "Wird automatisch gestartet"})
+                        {linkedVpn.active ? t.statusConnected : t.vpnAutoStartHint})
                       </div>
                     )}
                   </div>
@@ -402,10 +405,10 @@ const Content: FC = () => {
                       onClick={() => handleWakeTarget(target)}
                     >
                       {isWaking
-                        ? "Sende WoL..."
+                        ? t.btnSendingWol
                         : needsVpnActivation
-                        ? "⚡ VPN starten & wecken"
-                        : "⚡ PC wecken (WoL)"}
+                        ? t.btnStartVpnAndWake
+                        : t.btnWakePc}
                     </DialogButton>
 
                     <DialogButton
@@ -428,7 +431,7 @@ const Content: FC = () => {
 
         <PanelSectionRow>
           <ButtonItem layout="below" onClick={() => openTargetModal(undefined)}>
-            + Neuen PC hinzufügen
+            {t.btnAddPc}
           </ButtonItem>
         </PanelSectionRow>
       </PanelSection>

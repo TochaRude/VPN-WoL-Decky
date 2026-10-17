@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import {
   DialogButton,
   DropdownItem,
@@ -7,6 +7,7 @@ import {
   TextField,
   ToggleField,
 } from "@decky/ui";
+import { formatString, getTranslations } from "../i18n";
 import { VpnConnection, WolTarget } from "../types";
 
 export interface TargetModalProps {
@@ -24,22 +25,24 @@ export const TargetModal: FC<TargetModalProps> = ({
   onSave,
   onDelete,
 }) => {
+  const t = useMemo(() => getTranslations(), []);
+
   const [name, setName] = useState<string>(existingTarget?.name ?? "Gaming PC");
   const [mac, setMac] = useState<string>(existingTarget?.mac ?? "");
-  const [ip, setIp] = useState<string>(existingTarget?.ip ?? "192.168.178.");
+  const [ip, setIp] = useState<string>(existingTarget?.ip ?? "");
   const [broadcastIp, setBroadcastIp] = useState<string>(
     existingTarget?.broadcast_ip ?? ""
   );
   const [port, setPort] = useState<string>(String(existingTarget?.port ?? 9));
   const [vpnId, setVpnId] = useState<string>(existingTarget?.vpn_id ?? "");
-  const [fritzboxTrigger, setFritzboxTrigger] = useState<boolean>(
-    existingTarget?.fritzbox_trigger ?? true
+  const [wakeTrigger, setWakeTrigger] = useState<boolean>(
+    existingTarget?.wake_trigger ?? existingTarget?.fritzbox_trigger ?? true
   );
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [saving, setSaving] = useState<boolean>(false);
 
   const vpnOptions = [
-    { data: "", label: "Kein festes VPN (aktuelles Netzwerk nutzen)" },
+    { data: "", label: t.fieldVpnNone },
     ...vpns.map((v) => ({
       data: v.id,
       label: `${v.name} (${v.backend})`,
@@ -49,28 +52,28 @@ export const TargetModal: FC<TargetModalProps> = ({
   const handleSave = async () => {
     setErrorMsg("");
     if (!mac.trim()) {
-      setErrorMsg("Bitte gib die MAC-Adresse deines PCs ein (z.B. AA:BB:CC:DD:EE:FF).");
+      setErrorMsg(t.errMacRequired);
       return;
     }
     setSaving(true);
     try {
       const res = await onSave({
         id: existingTarget?.id,
-        name: name.trim() || "Mein PC",
+        name: name.trim() || "PC",
         mac: mac.trim(),
         ip: ip.trim(),
         broadcast_ip: broadcastIp.trim(),
         port: parseInt(port, 10) || 9,
         vpn_id: vpnId,
-        fritzbox_trigger: fritzboxTrigger,
+        wake_trigger: wakeTrigger,
       });
       if (res.success) {
         closeModal?.();
       } else {
-        setErrorMsg(res.error || "Fehler beim Speichern des PC-Profils.");
+        setErrorMsg(res.error || t.errSaveFailed);
       }
     } catch (e: any) {
-      setErrorMsg(String(e?.message || e || "Unbekannter Fehler"));
+      setErrorMsg(String(e?.message || e || t.errSaveFailed));
     } finally {
       setSaving(false);
     }
@@ -91,7 +94,9 @@ export const TargetModal: FC<TargetModalProps> = ({
     <ModalRoot onCancel={closeModal} closeModal={closeModal}>
       <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "4px" }}>
         <h2 style={{ margin: "0 0 6px 0", fontSize: "18px", color: "#ffffff" }}>
-          {existingTarget ? `PC bearbeiten: ${existingTarget.name}` : "Neuen PC (Wake-on-LAN) anlegen"}
+          {existingTarget
+            ? formatString(t.modalTitleEdit, { name: existingTarget.name })
+            : t.modalTitleNew}
         </h2>
 
         {errorMsg && (
@@ -110,54 +115,54 @@ export const TargetModal: FC<TargetModalProps> = ({
         )}
 
         <TextField
-          label="Name des PCs"
+          label={t.fieldPcNameLabel}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          description="Anzeigename im Quick Access Menü (z.B. Gaming PC)"
+          description={t.fieldPcNameDesc}
         />
 
         <TextField
-          label="MAC-Adresse (Pflichtfeld)"
+          label={t.fieldMacLabel}
           value={mac}
           onChange={(e) => setMac(e.target.value)}
-          description="Format: AA:BB:CC:DD:EE:FF oder AA-BB-CC-DD-EE-FF"
+          description={t.fieldMacDesc}
         />
 
         <TextField
-          label="Lokale IP-Adresse des PCs (Heimnetz / FritzBox)"
+          label={t.fieldIpLabel}
           value={ip}
           onChange={(e) => setIp(e.target.value)}
-          description="Wird für Live-Ping-Status, direktes WireGuard-Unicast-WoL und Subnet-Broadcast (z.B. 192.168.178.20) genutzt"
+          description={t.fieldIpDesc}
         />
 
         <DropdownItem
-          label="Zugehöriges VPN"
-          description="Wird bei 'VPN starten & PC wecken' automatisch vor dem Aufwecken verbunden"
+          label={t.fieldVpnLabel}
+          description={t.fieldVpnDesc}
           rgOptions={vpnOptions}
           selectedOption={vpnId}
           onChange={(opt) => setVpnId(String(opt.data ?? ""))}
         />
 
         <ToggleField
-          label="FritzBox Auto-Wake Trigger"
-          description="Sendet zusätzlich Ping- & TCP-Pakete an die PC-IP (weckt den PC auch über die FritzBox-Option 'Computer starten bei Zugriff')"
-          checked={fritzboxTrigger}
-          onChange={(val) => setFritzboxTrigger(val)}
+          label={t.fieldWakeTriggerLabel}
+          description={t.fieldWakeTriggerDesc}
+          checked={wakeTrigger}
+          onChange={(val) => setWakeTrigger(val)}
         />
 
         <TextField
-          label="Abweichende Broadcast-IP (Optional)"
+          label={t.fieldBroadcastLabel}
           value={broadcastIp}
           onChange={(e) => setBroadcastIp(e.target.value)}
-          description="Leer lassen für automatische Berechnung aus der PC-IP (z.B. 192.168.178.255)"
+          description={t.fieldBroadcastDesc}
         />
 
         <TextField
-          label="UDP-Port"
+          label={t.fieldPortLabel}
           value={port}
           mustBeNumeric={true}
           onChange={(e) => setPort(e.target.value)}
-          description="Standard ist 9 (Plugin sendet zur Sicherheit auf Port 9, 7 und diesem Port)"
+          description={t.fieldPortDesc}
         />
 
         <Focusable
@@ -179,7 +184,7 @@ export const TargetModal: FC<TargetModalProps> = ({
               disabled={saving}
               onClick={handleDelete}
             >
-              Löschen
+              {t.btnDelete}
             </DialogButton>
           )}
 
@@ -188,7 +193,7 @@ export const TargetModal: FC<TargetModalProps> = ({
             disabled={saving}
             onClick={() => closeModal?.()}
           >
-            Abbrechen
+            {t.btnCancel}
           </DialogButton>
 
           <DialogButton
@@ -201,7 +206,7 @@ export const TargetModal: FC<TargetModalProps> = ({
             disabled={saving}
             onClick={handleSave}
           >
-            {saving ? "Speichere..." : "Speichern"}
+            {saving ? t.btnSaving : t.btnSave}
           </DialogButton>
         </Focusable>
       </div>
