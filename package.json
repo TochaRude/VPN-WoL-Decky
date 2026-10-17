@@ -20,8 +20,16 @@
     "steam-deck",
     "legion-go"
   ],
-  "author": "TochaRude ",
+  "author": "TochaRude",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TochaRude/VPN-WoL-Decky.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TochaRude/VPN-WoL-Decky/issues"
+  },
+  "homepage": "https://github.com/TochaRude/VPN-WoL-Decky#readme",
   "devDependencies": {
     "@decky/rollup": "^1.0.2",
     "@decky/ui": "^4.11.0",
