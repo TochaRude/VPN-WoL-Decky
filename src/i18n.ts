@@ -45,6 +45,12 @@ export interface Translations {
   fieldBroadcastDesc: string;
   fieldPortLabel: string;
   fieldPortDesc: string;
+  fieldRouterPasswordLabel: string;
+  fieldRouterPasswordDesc: string;
+  fieldRouterUserLabel: string;
+  fieldRouterUserDesc: string;
+  fieldRouterIpLabel: string;
+  fieldRouterIpDesc: string;
   btnDelete: string;
   btnCancel: string;
   btnSave: string;
@@ -100,6 +106,13 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldBroadcastDesc: "Leave empty for automatic calculation from PC IP",
     fieldPortLabel: "UDP Port",
     fieldPortDesc: "Default is 9 (sends on port 9, 7, and this port for reliability)",
+    fieldRouterPasswordLabel: "Router Password for VPN Wake-on-LAN (Optional, TR-064)",
+    fieldRouterPasswordDesc:
+      "Recommended for WireGuard over mobile hotspot: lets your router send a real Layer-2 WoL broadcast inside your home LAN",
+    fieldRouterUserLabel: "Router Username (Optional)",
+    fieldRouterUserDesc: "Leave empty for automatic detection of default router user",
+    fieldRouterIpLabel: "Router IP Address (Optional)",
+    fieldRouterIpDesc: "Leave empty for automatic gateway detection (e.g. 192.168.178.1)",
     btnDelete: "Delete",
     btnCancel: "Cancel",
     btnSave: "Save",
@@ -156,6 +169,13 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldBroadcastDesc: "Leer lassen für automatische Berechnung aus der PC-IP",
     fieldPortLabel: "UDP-Port",
     fieldPortDesc: "Standard ist 9 (sendet zur Sicherheit auf Port 9, 7 und diesem Port)",
+    fieldRouterPasswordLabel: "Router-Passwort für VPN-WoL (Optional, TR-064)",
+    fieldRouterPasswordDesc:
+      "Empfohlen für Mobilfunk-VPN: weist den Router direkt an, ein echtes Layer-2-WoL-Paket im Heimnetz zu senden (auch wenn der ARP-Cache leer ist)",
+    fieldRouterUserLabel: "Router-Benutzername (Optional)",
+    fieldRouterUserDesc: "Leer lassen für automatische Erkennung des Standard-Routerbenutzers",
+    fieldRouterIpLabel: "Router-IP-Adresse (Optional)",
+    fieldRouterIpDesc: "Leer lassen für automatische Gateway-Erkennung (z.B. 192.168.178.1)",
     btnDelete: "Löschen",
     btnCancel: "Abbrechen",
     btnSave: "Speichern",
@@ -209,6 +229,13 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldBroadcastDesc: "Laisser vide pour un calcul automatique depuis l'IP du PC",
     fieldPortLabel: "Port UDP",
     fieldPortDesc: "Par défaut 9 (envoie sur les ports 9, 7 et ce port)",
+    fieldRouterPasswordLabel: "Mot de passe routeur pour WoL VPN (Optionnel, TR-064)",
+    fieldRouterPasswordDesc:
+      "Recommandé pour VPN mobile : demande au routeur d'envoyer un vrai paquet WoL Layer-2 sur le réseau local",
+    fieldRouterUserLabel: "Utilisateur routeur (Optionnel)",
+    fieldRouterUserDesc: "Laisser vide pour la détection automatique de l'utilisateur par défaut",
+    fieldRouterIpLabel: "Adresse IP du routeur (Optionnel)",
+    fieldRouterIpDesc: "Laisser vide pour la détection automatique de la passerelle",
     btnDelete: "Supprimer",
     btnCancel: "Annuler",
     btnSave: "Enregistrer",
@@ -263,6 +290,13 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldBroadcastDesc: "Dejar vacío para cálculo automático a partir de la IP del PC",
     fieldPortLabel: "Puerto UDP",
     fieldPortDesc: "Por defecto 9 (envía en los puertos 9, 7 y este puerto)",
+    fieldRouterPasswordLabel: "Contraseña del Router para WoL por VPN (Opcional, TR-064)",
+    fieldRouterPasswordDesc:
+      "Recomendado para VPN móvil: indica al router que envíe un paquete WoL Layer-2 directo en la red local",
+    fieldRouterUserLabel: "Usuario del Router (Opcional)",
+    fieldRouterUserDesc: "Dejar vacío para detección automática del usuario predeterminado",
+    fieldRouterIpLabel: "Dirección IP del Router (Opcional)",
+    fieldRouterIpDesc: "Dejar vacío para detección automática de puerta de enlace",
     btnDelete: "Eliminar",
     btnCancel: "Cancelar",
     btnSave: "Guardar",
@@ -316,6 +350,13 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldBroadcastDesc: "Lascia vuoto per il calcolo automatico dall'IP del PC",
     fieldPortLabel: "Porta UDP",
     fieldPortDesc: "Predefinita 9 (invia sulle porte 9, 7 e questa porta)",
+    fieldRouterPasswordLabel: "Password Router per WoL VPN (Opzionale, TR-064)",
+    fieldRouterPasswordDesc:
+      "Consigliato per VPN mobile: fa inviare al router un vero pacchetto WoL Layer-2 nella rete locale",
+    fieldRouterUserLabel: "Utente Router (Opzionale)",
+    fieldRouterUserDesc: "Lascia vuoto per il rilevamento automatico dell'utente predefinito",
+    fieldRouterIpLabel: "Indirizzo IP Router (Opzionale)",
+    fieldRouterIpDesc: "Lascia vuoto per il rilevamento automatico del gateway",
     btnDelete: "Elimina",
     btnCancel: "Annulla",
     btnSave: "Salva",
@@ -369,6 +410,13 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldBroadcastDesc: "Deixe em branco para cálculo automático a partir do IP do PC",
     fieldPortLabel: "Porta UDP",
     fieldPortDesc: "Padrão é 9 (envia nas portas 9, 7 e nesta porta)",
+    fieldRouterPasswordLabel: "Senha do Roteador para WoL via VPN (Opcional, TR-064)",
+    fieldRouterPasswordDesc:
+      "Recomendado para VPN móvel: instrui o roteador a enviar um pacote WoL Layer-2 real na rede local",
+    fieldRouterUserLabel: "Usuário do Roteador (Opcional)",
+    fieldRouterUserDesc: "Deixe em branco para detecção automática do usuário padrão",
+    fieldRouterIpLabel: "Endereço IP do Roteador (Opcional)",
+    fieldRouterIpDesc: "Deixe em branco para detecção automática do gateway",
     btnDelete: "Excluir",
     btnCancel: "Cancelar",
     btnSave: "Salvar",
@@ -422,6 +470,13 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldBroadcastDesc: "Pozostaw puste dla automatycznego obliczenia z adresu IP",
     fieldPortLabel: "Port UDP",
     fieldPortDesc: "Domyślnie 9 (wysyła na porty 9, 7 oraz ten port)",
+    fieldRouterPasswordLabel: "Hasło routera dla WoL przez VPN (Opcjonalnie, TR-064)",
+    fieldRouterPasswordDesc:
+      "Zalecane dla mobilnego VPN: zleca routerowi wysłanie pakietu WoL Layer-2 bezpośrednio w sieci domowej",
+    fieldRouterUserLabel: "Użytkownik routera (Opcjonalnie)",
+    fieldRouterUserDesc: "Pozostaw puste dla automatycznego wykrycia domyślnego użytkownika",
+    fieldRouterIpLabel: "Adres IP routera (Opcjonalnie)",
+    fieldRouterIpDesc: "Pozostaw puste dla automatycznego wykrycia bramy",
     btnDelete: "Usuń",
     btnCancel: "Anuluj",
     btnSave: "Zapisz",
@@ -475,6 +530,13 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldBroadcastDesc: "Оставьте пустым для автоматического расчёта из IP-адреса ПК",
     fieldPortLabel: "Порт UDP",
     fieldPortDesc: "По умолчанию 9 (отправляет на порты 9, 7 и указанный порт)",
+    fieldRouterPasswordLabel: "Пароль роутера для VPN WoL (Необязательно, TR-064)",
+    fieldRouterPasswordDesc:
+      "Рекомендуется для мобильного VPN: роутер сам отправит Layer-2 WoL-пакет внутри домашней сети",
+    fieldRouterUserLabel: "Пользователь роутера (Необязательно)",
+    fieldRouterUserDesc: "Оставьте пустым для автоопределения пользователя по умолчанию",
+    fieldRouterIpLabel: "IP-адрес роутера (Необязательно)",
+    fieldRouterIpDesc: "Оставьте пустым для автоопределения шлюза",
     btnDelete: "Удалить",
     btnCancel: "Отмена",
     btnSave: "Сохранить",
