@@ -38,6 +38,15 @@ export const TargetModal: FC<TargetModalProps> = ({
   const [wakeTrigger, setWakeTrigger] = useState<boolean>(
     existingTarget?.wake_trigger ?? existingTarget?.fritzbox_trigger ?? true
   );
+  const [routerPassword, setRouterPassword] = useState<string>(
+    existingTarget?.router_password ?? ""
+  );
+  const [routerUser, setRouterUser] = useState<string>(
+    existingTarget?.router_user ?? ""
+  );
+  const [routerIp, setRouterIp] = useState<string>(
+    existingTarget?.router_ip ?? ""
+  );
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -66,6 +75,9 @@ export const TargetModal: FC<TargetModalProps> = ({
         port: parseInt(port, 10) || 9,
         vpn_id: vpnId,
         wake_trigger: wakeTrigger,
+        router_password: routerPassword,
+        router_user: routerUser.trim(),
+        router_ip: routerIp.trim(),
       });
       if (res.success) {
         closeModal?.();
@@ -141,6 +153,28 @@ export const TargetModal: FC<TargetModalProps> = ({
           rgOptions={vpnOptions}
           selectedOption={vpnId}
           onChange={(opt) => setVpnId(String(opt.data ?? ""))}
+        />
+
+        <TextField
+          label={t.fieldRouterPasswordLabel}
+          value={routerPassword}
+          bIsPassword={true}
+          onChange={(e) => setRouterPassword(e.target.value)}
+          description={t.fieldRouterPasswordDesc}
+        />
+
+        <TextField
+          label={t.fieldRouterUserLabel}
+          value={routerUser}
+          onChange={(e) => setRouterUser(e.target.value)}
+          description={t.fieldRouterUserDesc}
+        />
+
+        <TextField
+          label={t.fieldRouterIpLabel}
+          value={routerIp}
+          onChange={(e) => setRouterIp(e.target.value)}
+          description={t.fieldRouterIpDesc}
         />
 
         <ToggleField

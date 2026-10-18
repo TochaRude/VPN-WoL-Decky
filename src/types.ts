@@ -21,6 +21,9 @@ export interface WolTarget {
   vpn_id: string;
   wake_trigger: boolean;
   fritzbox_trigger?: boolean;
+  router_ip?: string;
+  router_user?: string;
+  router_password?: string;
 }
 
 export interface PingStatus {
