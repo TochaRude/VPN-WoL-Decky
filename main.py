@@ -1,16 +1,11 @@
 import asyncio
 import glob
-import hashlib
 import ipaddress
 import json
 import os
 import re
 import socket
-import urllib.error
-import urllib.parse
-import urllib.request
 import uuid
-import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional, Tuple
 
 import decky
@@ -66,25 +61,22 @@ def derive_subnet_gateway(ip_str: str) -> Optional[str]:
 
 
 class Plugin:
-    def __init__(self) -> None:
-        self.settings_path: str = ""
-        self.settings: Dict[str, Any] = {"wol_targets": []}
-        self._load_settings()
+    settings_path: str = ""
+    settings: Dict[str, Any] = {}
 
     def _get_settings_dir(self) -> str:
         """Resolve the persistent plugin settings directory provided by Decky Loader."""
         settings_dir = (
             getattr(decky, "DECKY_PLUGIN_SETTINGS_DIR", "")
             or os.environ.get("DECKY_PLUGIN_SETTINGS_DIR", "")
-            or getattr(decky, "DECKY_SETTINGS_DIR", "")
         )
         if not settings_dir:
-            decky_home = (
-                getattr(decky, "DECKY_HOME", "")
-                or os.environ.get("DECKY_HOME", "")
+            base_settings = (
+                getattr(decky, "DECKY_SETTINGS_DIR", "")
+                or os.environ.get("DECKY_SETTINGS_DIR", "")
             )
-            if decky_home:
-                settings_dir = os.path.join(decky_home, "settings", "VPN-WoL")
+            if base_settings:
+                settings_dir = os.path.join(base_settings, "VPN-WoL")
             else:
                 user_home = (
                     getattr(decky, "DECKY_USER_HOME", "")
@@ -156,10 +148,20 @@ class Plugin:
             settings_dir = self._get_settings_dir()
             os.makedirs(settings_dir, exist_ok=True)
             self.settings_path = os.path.join(settings_dir, "settings.json")
+
+            # Also check legacy path in case targets were previously saved in DECKY_SETTINGS_DIR
+            legacy_dir = getattr(decky, "DECKY_SETTINGS_DIR", "")
+            legacy_path = os.path.join(legacy_dir, "settings.json") if legacy_dir else ""
+
             if os.path.exists(self.settings_path):
                 with open(self.settings_path, "r", encoding="utf-8") as f:
                     loaded = json.load(f)
-                if isinstance(loaded, dict):
+                if isinstance(loaded, dict) and "wol_targets" in loaded:
+                    default_settings.update(loaded)
+            elif legacy_path and os.path.exists(legacy_path):
+                with open(legacy_path, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                if isinstance(loaded, dict) and "wol_targets" in loaded:
                     default_settings.update(loaded)
             decky.logger.info(
                 f"Loaded settings from {self.settings_path} ({len(default_settings.get('wol_targets', []))} targets)."
@@ -167,7 +169,6 @@ class Plugin:
         except Exception as e:
             decky.logger.error(f"Failed to load settings.json: {e}")
 
-        # Ensure backward compatibility for targets saved with fritzbox_trigger
         for target in default_settings.get("wol_targets", []):
             if "wake_trigger" not in target:
                 target["wake_trigger"] = bool(target.get("fritzbox_trigger", True))
@@ -498,6 +499,9 @@ class Plugin:
                 "router_password": router_password,
             }
 
+            if "wol_targets" not in self.settings:
+                self._load_settings()
+
             targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
             updated = False
             for idx, existing in enumerate(targets):
@@ -532,6 +536,8 @@ class Plugin:
 
     async def delete_wol_target(self, target_id: str) -> Dict[str, Any]:
         """Delete a Wake-on-LAN PC profile by ID."""
+        if "wol_targets" not in self.settings:
+            self._load_settings()
         targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
         targets = [t for t in targets if t.get("id") != target_id]
         self.settings["wol_targets"] = targets
@@ -561,6 +567,8 @@ class Plugin:
 
     async def ping_all_targets(self) -> Dict[str, Dict[str, Any]]:
         """Ping all configured WoL targets concurrently and return a map of target_id -> status."""
+        if "wol_targets" not in self.settings:
+            self._load_settings()
         targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
         results: Dict[str, Dict[str, Any]] = {}
 
@@ -612,7 +620,7 @@ class Plugin:
                 except Exception:
                     pass
 
-    def _send_router_wol(
+    async def _send_router_wol(
         self,
         router_ip: str,
         router_user: str,
@@ -622,6 +630,7 @@ class Plugin:
     ) -> Tuple[bool, Optional[str]]:
         """
         Instruct the home router over VPN to send a Layer-2 Wake-on-LAN broadcast inside the home LAN.
+        Uses host `curl` and regex parsing so no extra Python XML/HTTP modules are required.
         1. Auto-discovers default router username via /login_sid.lua?version=2 if router_user is empty.
         2. Sends TR-064 SOAP action `X_AVM-DE_WakeOnLANByMACAddress` on port 49000.
         3. Also attempts Web UI SID login + /query.lua & /data.lua (`btn_wake`) fallback.
@@ -631,39 +640,34 @@ class Plugin:
         challenge_str = ""
 
         # Step 1: Query /login_sid.lua?version=2 to auto-detect default username and challenge
-        try:
-            with urllib.request.urlopen(
-                f"{base_url}/login_sid.lua?version=2", timeout=3.5
-            ) as resp:
-                xml_bytes = resp.read()
-            root = ET.fromstring(xml_bytes)
-            challenge_el = root.find("Challenge")
-            if challenge_el is not None and challenge_el.text:
-                challenge_str = challenge_el.text.strip()
+        rc, xml_text, _ = await self._run_cmd(
+            ["curl", "-s", "-m", "4", f"{base_url}/login_sid.lua?version=2"],
+            timeout=5.0,
+        )
+        if rc == 0 and xml_text:
+            c_match = re.search(r"<Challenge>\s*([^<\s]+)\s*</Challenge>", xml_text)
+            if c_match:
+                challenge_str = c_match.group(1).strip()
 
             if not discovered_user:
-                users_el = root.find("Users")
-                if users_el is not None:
-                    last_user = None
-                    first_user = None
-                    for u in users_el.findall("User"):
-                        uname = (u.text or "").strip()
-                        if not uname:
-                            continue
-                        if first_user is None:
-                            first_user = uname
-                        if u.attrib.get("last") == "1":
-                            last_user = uname
-                    discovered_user = last_user or first_user or ""
-        except Exception as e:
-            decky.logger.debug(f"Could not query login_sid.lua on {router_ip}: {e}")
+                last_user = ""
+                first_user = ""
+                for attrs, uname in re.findall(r"<User([^>]*)>([^<]+)</User>", xml_text):
+                    u_clean = uname.strip()
+                    if not u_clean:
+                        continue
+                    if not first_user:
+                        first_user = u_clean
+                    if 'last="1"' in attrs or "last='1'" in attrs:
+                        last_user = u_clean
+                discovered_user = last_user or first_user
 
         candidate_users: List[str] = []
         for u in (router_user.strip(), discovered_user, "dslf-config", "admin"):
             if u and u not in candidate_users:
                 candidate_users.append(u)
 
-        # Step 2: Try TR-064 SOAP WakeOnLANByMACAddress on port 49000
+        # Step 2: Try TR-064 SOAP WakeOnLANByMACAddress on port 49000 via curl --digest
         tr064_url = f"http://{router_ip}:49000/upnp/control/hosts"
         soap_body = (
             '<?xml version="1.0" encoding="utf-8"?>'
@@ -675,47 +679,49 @@ class Plugin:
             "</u:X_AVM-DE_WakeOnLANByMACAddress>"
             "</s:Body>"
             "</s:Envelope>"
-        ).encode("utf-8")
+        )
 
         tr064_auth_failed = False
         for auth_user in candidate_users:
-            try:
-                pwd_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-                pwd_mgr.add_password(None, tr064_url, auth_user, router_password)
-                digest_handler = urllib.request.HTTPDigestAuthHandler(pwd_mgr)
-                opener = urllib.request.build_opener(digest_handler)
-
-                req = urllib.request.Request(
+            rc, out, _ = await self._run_cmd(
+                [
+                    "curl",
+                    "-s",
+                    "-m",
+                    "5",
+                    "--digest",
+                    "-u",
+                    f"{auth_user}:{router_password}",
+                    "-H",
+                    'Content-Type: text/xml; charset="utf-8"',
+                    "-H",
+                    'SOAPACTION: "urn:dslforum-org:service:Hosts:1#X_AVM-DE_WakeOnLANByMACAddress"',
+                    "-d",
+                    soap_body,
+                    "-w",
+                    "\n%{http_code}",
                     tr064_url,
-                    data=soap_body,
-                    headers={
-                        "Content-Type": 'text/xml; charset="utf-8"',
-                        "SOAPACTION": '"urn:dslforum-org:service:Hosts:1#X_AVM-DE_WakeOnLANByMACAddress"',
-                    },
-                    method="POST",
-                )
-                with opener.open(req, timeout=5.0) as resp:
-                    if 200 <= resp.status < 300:
-                        decky.logger.info(
-                            f"Router TR-064 WoL succeeded via {router_ip}:49000 (user={auth_user})"
-                        )
-                        return True, None
-            except urllib.error.HTTPError as he:
-                decky.logger.warning(
-                    f"TR-064 WoL HTTP error {he.code} on {router_ip} (user={auth_user}): {he}"
-                )
-                if he.code == 401:
+                ],
+                timeout=6.0,
+            )
+            if rc == 0 and out:
+                lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+                http_code = lines[-1] if lines else ""
+                if http_code.startswith("2"):
+                    decky.logger.info(
+                        f"Router TR-064 WoL succeeded via {router_ip}:49000 (user={auth_user})"
+                    )
+                    return True, None
+                if http_code == "401":
                     tr064_auth_failed = True
                     continue
-                break
-            except Exception as e:
-                decky.logger.debug(f"TR-064 WoL failed on {router_ip}:49000: {e}")
-                break
 
-        # Step 3: Fallback to Router Web UI SID + query.lua / data.lua (works even if TR-064 port 49000 is off)
+        # Step 3: Fallback to Router Web UI SID + query.lua / data.lua
         web_user = discovered_user or router_user.strip() or ""
         if challenge_str:
             try:
+                import hashlib
+
                 if challenge_str.startswith("2$"):
                     parts = challenge_str.split("$")
                     iter1 = int(parts[1])
@@ -731,23 +737,34 @@ class Plugin:
                     raw = f"{challenge_str}-{router_password}".encode("utf-16le")
                     challenge_resp = f"{challenge_str}-{hashlib.md5(raw).hexdigest()}"
 
-                login_params = urllib.parse.urlencode(
-                    {"username": web_user, "response": challenge_resp}
+                rc, sid_xml, _ = await self._run_cmd(
+                    [
+                        "curl",
+                        "-s",
+                        "-m",
+                        "4",
+                        "--get",
+                        "--data-urlencode",
+                        f"username={web_user}",
+                        "--data-urlencode",
+                        f"response={challenge_resp}",
+                        f"{base_url}/login_sid.lua?version=2",
+                    ],
+                    timeout=5.0,
                 )
-                with urllib.request.urlopen(
-                    f"{base_url}/login_sid.lua?version=2&{login_params}", timeout=4.0
-                ) as resp:
-                    sid_root = ET.fromstring(resp.read())
-                sid = (sid_root.findtext("SID") or "").strip()
+                sid_match = re.search(r"<SID>\s*([^<\s]+)\s*</SID>", sid_xml or "")
+                sid = sid_match.group(1).strip() if sid_match else ""
 
                 if sid and sid != "0000000000000000":
-                    # Find landevice UID matching the target MAC or IP address
                     q_url = (
                         f"{base_url}/query.lua?sid={sid}"
                         "&network=landevice:settings/landevice/list(name,ip,mac,UID)"
                     )
-                    with urllib.request.urlopen(q_url, timeout=4.0) as q_resp:
-                        q_data = json.loads(q_resp.read().decode("utf-8", errors="replace"))
+                    rc, q_raw, _ = await self._run_cmd(
+                        ["curl", "-s", "-m", "4", q_url],
+                        timeout=5.0,
+                    )
+                    q_data = json.loads(q_raw) if (rc == 0 and q_raw) else {}
 
                     dev_uid = ""
                     for item in q_data.get("network", []):
@@ -758,27 +775,23 @@ class Plugin:
                             break
 
                     if dev_uid:
-                        post_data = urllib.parse.urlencode(
-                            {
-                                "xhr": "1",
-                                "sid": sid,
-                                "page": "edit_device",
-                                "dev": dev_uid,
-                                "btn_wake": "",
-                            }
-                        ).encode("utf-8")
-                        wake_req = urllib.request.Request(
-                            f"{base_url}/data.lua",
-                            data=post_data,
-                            headers={"Content-Type": "application/x-www-form-urlencoded"},
-                            method="POST",
+                        rc, _, _ = await self._run_cmd(
+                            [
+                                "curl",
+                                "-s",
+                                "-m",
+                                "5",
+                                "-d",
+                                f"xhr=1&sid={sid}&page=edit_device&dev={dev_uid}&btn_wake=",
+                                f"{base_url}/data.lua",
+                            ],
+                            timeout=6.0,
                         )
-                        with urllib.request.urlopen(wake_req, timeout=5.0) as w_resp:
-                            if 200 <= w_resp.status < 300:
-                                decky.logger.info(
-                                    f"Router Web-UI WoL succeeded via {router_ip}/data.lua (dev={dev_uid})"
-                                )
-                                return True, None
+                        if rc == 0:
+                            decky.logger.info(
+                                f"Router Web-UI WoL succeeded via {router_ip}/data.lua (dev={dev_uid})"
+                            )
+                            return True, None
                 else:
                     return (
                         False,
@@ -846,6 +859,8 @@ class Plugin:
           across both kernel-routed sockets and SO_BINDTODEVICE on the VPN interface.
         - Optionally triggers Router Auto-Wake / ARP resolution via ICMP Ping + TCP SYN probes.
         """
+        if "wol_targets" not in self.settings:
+            self._load_settings()
         targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
         target = next((t for t in targets if t.get("id") == target_id), None)
         if not target:
@@ -942,8 +957,7 @@ class Plugin:
                 or "192.168.178.1"
             )
             router_user = (target.get("router_user") or "").strip()
-            router_ok, router_err = await asyncio.to_thread(
-                self._send_router_wol,
+            router_ok, router_err = await self._send_router_wol(
                 router_ip,
                 router_user,
                 router_password,
@@ -1003,6 +1017,8 @@ class Plugin:
 
     async def get_initial_state(self) -> Dict[str, Any]:
         """Return VPNs, configured WoL targets, and live ping statuses in one call."""
+        if "wol_targets" not in self.settings:
+            self._load_settings()
         vpns, statuses = await asyncio.gather(
             self.get_vpns(),
             self.ping_all_targets(),
