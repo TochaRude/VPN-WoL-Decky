@@ -46,8 +46,33 @@ def derive_subnet_broadcast(ip_str: str) -> Optional[str]:
 
 
 class Plugin:
-    settings_path: str = ""
-    settings: Dict[str, Any] = {}
+    def __init__(self) -> None:
+        self.settings_path: str = ""
+        self.settings: Dict[str, Any] = {"wol_targets": []}
+        self._load_settings()
+
+    def _get_settings_dir(self) -> str:
+        """Resolve the persistent plugin settings directory provided by Decky Loader."""
+        settings_dir = (
+            getattr(decky, "DECKY_PLUGIN_SETTINGS_DIR", "")
+            or os.environ.get("DECKY_PLUGIN_SETTINGS_DIR", "")
+            or getattr(decky, "DECKY_SETTINGS_DIR", "")
+        )
+        if not settings_dir:
+            decky_home = (
+                getattr(decky, "DECKY_HOME", "")
+                or os.environ.get("DECKY_HOME", "")
+            )
+            if decky_home:
+                settings_dir = os.path.join(decky_home, "settings", "VPN-WoL")
+            else:
+                user_home = (
+                    getattr(decky, "DECKY_USER_HOME", "")
+                    or os.environ.get("DECKY_USER_HOME", "")
+                    or os.path.expanduser("~")
+                )
+                settings_dir = os.path.join(user_home, "homebrew", "settings", "VPN-WoL")
+        return settings_dir
 
     def _clean_env(self) -> Dict[str, str]:
         """
@@ -104,19 +129,23 @@ class Plugin:
             return 1, "", str(e)
 
     def _load_settings(self) -> None:
-        os.makedirs(decky.DECKY_SETTINGS_DIR, exist_ok=True)
-        self.settings_path = os.path.join(decky.DECKY_SETTINGS_DIR, "settings.json")
         default_settings: Dict[str, Any] = {
             "wol_targets": [],
         }
-        if os.path.exists(self.settings_path):
-            try:
+        try:
+            settings_dir = self._get_settings_dir()
+            os.makedirs(settings_dir, exist_ok=True)
+            self.settings_path = os.path.join(settings_dir, "settings.json")
+            if os.path.exists(self.settings_path):
                 with open(self.settings_path, "r", encoding="utf-8") as f:
                     loaded = json.load(f)
                 if isinstance(loaded, dict):
                     default_settings.update(loaded)
-            except Exception as e:
-                decky.logger.error(f"Failed to load settings.json: {e}")
+            decky.logger.info(
+                f"Loaded settings from {self.settings_path} ({len(default_settings.get('wol_targets', []))} targets)."
+            )
+        except Exception as e:
+            decky.logger.error(f"Failed to load settings.json: {e}")
 
         # Ensure backward compatibility for targets saved with fritzbox_trigger
         for target in default_settings.get("wol_targets", []):
@@ -127,9 +156,18 @@ class Plugin:
 
     def _save_settings(self) -> None:
         try:
-            os.makedirs(decky.DECKY_SETTINGS_DIR, exist_ok=True)
-            with open(self.settings_path, "w", encoding="utf-8") as f:
+            settings_dir = self._get_settings_dir()
+            os.makedirs(settings_dir, exist_ok=True)
+            self.settings_path = os.path.join(settings_dir, "settings.json")
+            tmp_path = f"{self.settings_path}.tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(self.settings, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, self.settings_path)
+            decky.logger.info(
+                f"Saved settings to {self.settings_path} ({len(self.settings.get('wol_targets', []))} targets)."
+            )
         except Exception as e:
             decky.logger.error(f"Failed to save settings.json: {e}")
 
