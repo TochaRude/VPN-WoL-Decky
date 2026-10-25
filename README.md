@@ -32,6 +32,16 @@ A Decky Loader plugin for **SteamOS / CachyOS / Bazzite / Linux Handhelds** (Ste
   - Sends the 102-byte Magic Packet simultaneously via **direct UDP unicast** to the PC IP, **directed subnet broadcast** (e.g. `192.168.1.255`), and **global broadcast** (`255.255.255.255`), bound directly to the VPN interface (`SO_BINDTODEVICE`) as well as standard kernel routing.
   - Optional **Router Auto-Wake / ARP Trigger**: Sends ICMP Ping & TCP SYN probes to the target IP to refresh router ARP caches or trigger router *Wake-on-Access* features when waking a PC that has been powered off for a long time.
 
+### 3. Remote PC Shutdown via SSH (Windows & Linux)
+- **1-Click Remote Shutdown**:
+  - Displays a red **⏻ Shutdown** button when your target PC is online.
+  - Opens a confirmation dialog before sending the shutdown command to prevent accidental shutdowns.
+- **SSH Protocol**:
+  - Secure and lightweight: connects directly to the target PC over SSH.
+  - Windows command: `shutdown /s /t 0`
+  - Linux command: `systemctl poweroff`
+  - Supports SSH username, password, custom ports, and optional custom commands.
+
 ### Installation
 1. Download **[`VPN-WoL.zip`](https://github.com/TochaRude/VPN-WoL-Decky/releases/latest)** from the **[Releases](https://github.com/TochaRude/VPN-WoL-Decky/releases)** section.
 2. In Steam Game Mode, open **Decky Loader Settings** -> **General** -> enable **Developer Mode**.
@@ -57,6 +67,23 @@ A Decky Loader plugin for **SteamOS / CachyOS / Bazzite / Linux Handhelds** (Ste
   - Zeigt live an, ob der PC erreichbar ist (`Online (12 ms)` / `Offline`), und benachrichtigt per Steam-Toast, sobald der geweckte PC antwortet.
 - **Router Auto-Wake / ARP-Trigger**:
   - Kombiniert UDP-Magic-Packets (Unicast, Subnet-Broadcast & `SO_BINDTODEVICE`) mit optionalen Ping-/TCP-Impulsen, damit Router den ARP-Cache auflösen bzw. *Wake-on-Access*-Funktionen (automatisches Starten bei Zugriff aus dem VPN) zuverlässig auslösen.
+
+### 3. Remote-PC Herunterfahren via SSH (Windows & Linux)
+- **1-Klick Herunterfahren**:
+  - Sobald der Ziel-PC online ist, erscheint eine rote Schaltfläche **⏻ Herunterfahren**.
+  - Vor dem Senden erscheint ein Bestätigungsdialog, um versehentliches Abschalten zu verhindern.
+- **SSH-basiert**:
+  - Sicher und schlank: verbindet sich per SSH direkt mit dem PC.
+  - Windows: `shutdown /s /t 0`
+  - Linux: `systemctl poweroff`
+  - Unterstützt SSH-Benutzername, Passwort, abweichende Ports sowie benutzerdefinierte Befehle.
+- **Tipp für Windows 10/11**:
+  - OpenSSH Server lässt sich in Windows mit wenigen PowerShell-Befehlen (als Administrator) aktivieren:
+    ```powershell
+    Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+    Start-Service sshd
+    Set-Service -Name sshd -StartupType 'Automatic'
+    ```
 
 ### Installation
 1. Lade **[`VPN-WoL.zip`](https://github.com/TochaRude/VPN-WoL-Decky/releases/latest)** im Bereich **[Releases](https://github.com/TochaRude/VPN-WoL-Decky/releases)** herunter.

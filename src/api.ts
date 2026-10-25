@@ -6,6 +6,7 @@ import {
   SaveTargetResponse,
   SendWolResponse,
   SetVpnResponse,
+  ShutdownTargetResponse,
   VpnConnection,
   WolTarget,
 } from "./types";
@@ -36,3 +37,7 @@ export const sendWol = callable<
   [target_id: string, auto_connect_vpn: boolean],
   SendWolResponse
 >("send_wol");
+
+export const shutdownTarget = callable<[target_id: string], ShutdownTargetResponse>(
+  "shutdown_target"
+);

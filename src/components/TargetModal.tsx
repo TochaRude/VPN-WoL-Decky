@@ -47,6 +47,21 @@ export const TargetModal: FC<TargetModalProps> = ({
   const [routerIp, setRouterIp] = useState<string>(
     existingTarget?.router_ip ?? ""
   );
+  const [sshEnabled, setSshEnabled] = useState<boolean>(
+    existingTarget?.ssh_enabled ?? false
+  );
+  const [sshUser, setSshUser] = useState<string>(
+    existingTarget?.ssh_user ?? ""
+  );
+  const [sshPassword, setSshPassword] = useState<string>(
+    existingTarget?.ssh_password ?? ""
+  );
+  const [sshPort, setSshPort] = useState<string>(
+    String(existingTarget?.ssh_port ?? 22)
+  );
+  const [sshOs, setSshOs] = useState<string>(
+    existingTarget?.ssh_os ?? "windows"
+  );
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -78,6 +93,11 @@ export const TargetModal: FC<TargetModalProps> = ({
         router_password: routerPassword,
         router_user: routerUser.trim(),
         router_ip: routerIp.trim(),
+        ssh_enabled: sshEnabled,
+        ssh_user: sshUser.trim(),
+        ssh_password: sshPassword,
+        ssh_port: parseInt(sshPort, 10) || 22,
+        ssh_os: (sshOs as "windows" | "linux") || "windows",
       });
       if (res.success) {
         closeModal?.();
@@ -198,6 +218,51 @@ export const TargetModal: FC<TargetModalProps> = ({
           onChange={(e) => setPort(e.target.value)}
           description={t.fieldPortDesc}
         />
+
+        <ToggleField
+          label={t.fieldSshEnableLabel}
+          description={t.fieldSshEnableDesc}
+          checked={sshEnabled}
+          onChange={(val) => setSshEnabled(val)}
+        />
+
+        {sshEnabled && (
+          <>
+            <TextField
+              label={t.fieldSshUserLabel}
+              value={sshUser}
+              onChange={(e) => setSshUser(e.target.value)}
+              description={t.fieldSshUserDesc}
+            />
+
+            <TextField
+              label={t.fieldSshPasswordLabel}
+              value={sshPassword}
+              bIsPassword={true}
+              onChange={(e) => setSshPassword(e.target.value)}
+              description={t.fieldSshPasswordDesc}
+            />
+
+            <DropdownItem
+              label={t.fieldSshOsLabel}
+              description={t.fieldSshOsDesc}
+              rgOptions={[
+                { data: "windows", label: "Windows (shutdown /s /t 0)" },
+                { data: "linux", label: "Linux (systemctl poweroff)" },
+              ]}
+              selectedOption={sshOs}
+              onChange={(opt) => setSshOs(String(opt.data ?? "windows"))}
+            />
+
+            <TextField
+              label={t.fieldSshPortLabel}
+              value={sshPort}
+              mustBeNumeric={true}
+              onChange={(e) => setSshPort(e.target.value)}
+              description={t.fieldSshPortDesc}
+            />
+          </>
+        )}
 
         <Focusable
           style={{

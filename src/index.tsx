@@ -3,6 +3,7 @@ import {
   ButtonItem,
   DialogButton,
   Focusable,
+  ModalRoot,
   PanelSection,
   PanelSectionRow,
   ToggleField,
@@ -17,6 +18,7 @@ import {
   saveWolTarget,
   sendWol,
   setVpnState,
+  shutdownTarget,
 } from "./api";
 import { formatString, getTranslations } from "./i18n";
 import { PingStatus, VpnConnection, WolTarget } from "./types";
@@ -39,6 +41,59 @@ const PluginIcon: FC = () => (
   </svg>
 );
 
+interface ConfirmShutdownModalProps {
+  closeModal?: () => void;
+  targetName: string;
+  onConfirm: () => void;
+}
+
+const ConfirmShutdownModal: FC<ConfirmShutdownModalProps> = ({
+  closeModal,
+  targetName,
+  onConfirm,
+}) => {
+  const t = useMemo(() => getTranslations(), []);
+  return (
+    <ModalRoot onCancel={closeModal} closeModal={closeModal}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "8px 4px" }}>
+        <h2 style={{ margin: "0", fontSize: "18px", color: "#ffffff" }}>
+          {t.confirmShutdownTitle}
+        </h2>
+        <div style={{ fontSize: "13px", color: "#b0b8c0", lineHeight: 1.5 }}>
+          {formatString(t.confirmShutdownBody, { name: targetName })}
+        </div>
+        <Focusable
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "flex-end",
+            gap: "10px",
+            marginTop: "8px",
+          }}
+        >
+          <DialogButton style={{ flex: "1" }} onClick={() => closeModal?.()}>
+            {t.btnCancel}
+          </DialogButton>
+          <DialogButton
+            style={{
+              backgroundColor: "#dc3545",
+              color: "#ffffff",
+              fontWeight: 600,
+              flex: "1.2",
+            }}
+            onClick={() => {
+              closeModal?.();
+              onConfirm();
+            }}
+          >
+            {t.confirmShutdownButton}
+          </DialogButton>
+        </Focusable>
+      </div>
+    </ModalRoot>
+  );
+};
+
 const Content: FC = () => {
   const t = useMemo(() => getTranslations(), []);
   const isVisible = useQuickAccessVisible ? useQuickAccessVisible() : true;
@@ -49,6 +104,7 @@ const Content: FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [switchingVpnId, setSwitchingVpnId] = useState<string | null>(null);
   const [wakingTargetIds, setWakingTargetIds] = useState<Record<string, boolean>>({});
+  const [shuttingDownTargetIds, setShuttingDownTargetIds] = useState<Record<string, boolean>>({});
 
   const mountedRef = useRef<boolean>(true);
   useEffect(() => {
@@ -187,6 +243,43 @@ const Content: FC = () => {
         body: String(e?.message || e),
       });
     }
+  };
+
+  const handleShutdownTarget = (target: WolTarget) => {
+    showModal(
+      <ConfirmShutdownModal
+        targetName={target.name}
+        onConfirm={async () => {
+          setShuttingDownTargetIds((prev) => ({ ...prev, [target.id]: true }));
+          try {
+            const res = await shutdownTarget(target.id);
+            if (res.success) {
+              toaster.toast({
+                title: t.toastShutdownSentTitle,
+                body: formatString(t.toastShutdownSentBody, { name: target.name }),
+              });
+              setTimeout(() => {
+                if (mountedRef.current) refreshState(false);
+              }, 3000);
+            } else {
+              toaster.toast({
+                title: t.toastShutdownFailedTitle,
+                body: res.error || "Error",
+              });
+            }
+          } catch (e: any) {
+            toaster.toast({
+              title: t.toastShutdownFailedTitle,
+              body: String(e?.message || e),
+            });
+          } finally {
+            if (mountedRef.current) {
+              setShuttingDownTargetIds((prev) => ({ ...prev, [target.id]: false }));
+            }
+          }
+        }}
+      />
+    );
   };
 
   const openTargetModal = (existing?: WolTarget) => {
@@ -410,6 +503,24 @@ const Content: FC = () => {
                         ? t.btnStartVpnAndWake
                         : t.btnWakePc}
                     </DialogButton>
+
+                    {target.ssh_enabled && isOnline && (
+                      <DialogButton
+                        style={{
+                          width: "auto",
+                          padding: "8px 10px",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          backgroundColor: "rgba(220, 53, 69, 0.4)",
+                          color: "#ff9ea5",
+                          border: "1px solid rgba(220, 53, 69, 0.6)",
+                        }}
+                        disabled={Boolean(shuttingDownTargetIds[target.id])}
+                        onClick={() => handleShutdownTarget(target)}
+                      >
+                        {shuttingDownTargetIds[target.id] ? t.btnShuttingDown : t.btnShutdownPc}
+                      </DialogButton>
+                    )}
 
                     <DialogButton
                       style={{

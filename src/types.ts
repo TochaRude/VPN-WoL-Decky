@@ -24,6 +24,12 @@ export interface WolTarget {
   router_ip?: string;
   router_user?: string;
   router_password?: string;
+  ssh_enabled?: boolean;
+  ssh_user?: string;
+  ssh_password?: string;
+  ssh_port?: number;
+  ssh_os?: "windows" | "linux";
+  ssh_custom_cmd?: string;
 }
 
 export interface PingStatus {
@@ -57,6 +63,12 @@ export interface SendWolResponse {
   vpn_activated?: boolean;
   endpoints?: string[];
   vpns?: VpnConnection[];
+}
+
+export interface ShutdownTargetResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
 }
 
 export interface InitialStateResponse {

@@ -94,6 +94,25 @@ const translations = {
     fieldRouterUserDesc: "Leave empty for automatic detection of default router user",
     fieldRouterIpLabel: "Router IP Address (Optional)",
     fieldRouterIpDesc: "Leave empty for automatic gateway detection (e.g. 192.168.178.1)",
+    btnShutdownPc: "⏻ Shutdown",
+    btnShuttingDown: "Shutting down...",
+    modalSectionSsh: "Remote Shutdown via SSH (Optional)",
+    fieldSshEnableLabel: "Enable SSH Shutdown",
+    fieldSshEnableDesc: "Shows a shutdown button in the menu when this PC is online",
+    fieldSshUserLabel: "SSH Username",
+    fieldSshUserDesc: "Username on the PC (e.g. Windows account name)",
+    fieldSshPasswordLabel: "SSH Password (Optional)",
+    fieldSshPasswordDesc: "Leave empty if using SSH key authentication",
+    fieldSshPortLabel: "SSH Port",
+    fieldSshPortDesc: "Default is 22",
+    fieldSshOsLabel: "PC Operating System",
+    fieldSshOsDesc: "Windows sends 'shutdown /s /t 0', Linux sends 'systemctl poweroff'",
+    toastShutdownSentTitle: "Shutdown Command Sent",
+    toastShutdownSentBody: "Shutdown signal sent to {name}.",
+    toastShutdownFailedTitle: "Shutdown Failed",
+    confirmShutdownTitle: "Shutdown PC?",
+    confirmShutdownBody: "Are you sure you want to shut down '{name}'?",
+    confirmShutdownButton: "Shutdown",
     btnDelete: "Delete",
     btnCancel: "Cancel",
     btnSave: "Save",
@@ -157,6 +176,25 @@ const translations = {
     fieldRouterUserDesc: "Leer lassen für automatische Erkennung des Standard-Routerbenutzers",
     fieldRouterIpLabel: "Router-IP-Adresse (Optional)",
     fieldRouterIpDesc: "Leer lassen für automatische Gateway-Erkennung (z.B. 192.168.178.1)",
+    btnShutdownPc: "⏻ Herunterfahren",
+    btnShuttingDown: "Fahre herunter...",
+    modalSectionSsh: "Remote-Herunterfahren via SSH (Optional)",
+    fieldSshEnableLabel: "SSH-Herunterfahren aktivieren",
+    fieldSshEnableDesc: "Zeigt einen Herunterfahren-Button im Menü, wenn dieser PC online ist",
+    fieldSshUserLabel: "SSH-Benutzername",
+    fieldSshUserDesc: "Benutzername auf dem PC (z.B. dein Windows-Benutzername)",
+    fieldSshPasswordLabel: "SSH-Passwort (Optional)",
+    fieldSshPasswordDesc: "Leer lassen, falls SSH-Key-Authentifizierung verwendet wird",
+    fieldSshPortLabel: "SSH-Port",
+    fieldSshPortDesc: "Standard ist 22",
+    fieldSshOsLabel: "Betriebssystem des PCs",
+    fieldSshOsDesc: "Windows sendet 'shutdown /s /t 0', Linux sendet 'systemctl poweroff'",
+    toastShutdownSentTitle: "Herunterfahren gesendet",
+    toastShutdownSentBody: "Herunterfahren-Signal an {name} übermittelt.",
+    toastShutdownFailedTitle: "Herunterfahren fehlgeschlagen",
+    confirmShutdownTitle: "PC herunterfahren?",
+    confirmShutdownBody: "Möchtest du '{name}' wirklich herunterfahren?",
+    confirmShutdownButton: "Herunterfahren",
     btnDelete: "Löschen",
     btnCancel: "Abbrechen",
     btnSave: "Speichern",
@@ -217,6 +255,25 @@ const translations = {
     fieldRouterUserDesc: "Laisser vide pour la détection automatique de l'utilisateur par défaut",
     fieldRouterIpLabel: "Adresse IP du routeur (Optionnel)",
     fieldRouterIpDesc: "Laisser vide pour la détection automatique de la passerelle",
+    btnShutdownPc: "⏻ Éteindre",
+    btnShuttingDown: "Arrêt en cours...",
+    modalSectionSsh: "Arrêt à distance via SSH (Optionnel)",
+    fieldSshEnableLabel: "Activer l'arrêt par SSH",
+    fieldSshEnableDesc: "Affiche un bouton d'arrêt dans le menu lorsque ce PC est en ligne",
+    fieldSshUserLabel: "Nom d'utilisateur SSH",
+    fieldSshUserDesc: "Nom d'utilisateur sur le PC (ex. compte Windows)",
+    fieldSshPasswordLabel: "Mot de passe SSH (Optionnel)",
+    fieldSshPasswordDesc: "Laisser vide si vous utilisez une clé SSH",
+    fieldSshPortLabel: "Port SSH",
+    fieldSshPortDesc: "Par défaut 22",
+    fieldSshOsLabel: "Système d'exploitation du PC",
+    fieldSshOsDesc: "Windows envoie 'shutdown /s /t 0', Linux envoie 'systemctl poweroff'",
+    toastShutdownSentTitle: "Commande d'arrêt envoyée",
+    toastShutdownSentBody: "Signal d'arrêt envoyé à {name}.",
+    toastShutdownFailedTitle: "Échec de l'arrêt",
+    confirmShutdownTitle: "Éteindre le PC ?",
+    confirmShutdownBody: "Voulez-vous vraiment éteindre '{name}' ?",
+    confirmShutdownButton: "Éteindre",
     btnDelete: "Supprimer",
     btnCancel: "Annuler",
     btnSave: "Enregistrer",
@@ -278,6 +335,25 @@ const translations = {
     fieldRouterUserDesc: "Dejar vacío para detección automática del usuario predeterminado",
     fieldRouterIpLabel: "Dirección IP del Router (Opcional)",
     fieldRouterIpDesc: "Dejar vacío para detección automática de puerta de enlace",
+    btnShutdownPc: "⏻ Apagar",
+    btnShuttingDown: "Apagando...",
+    modalSectionSsh: "Apagado remoto por SSH (Opcional)",
+    fieldSshEnableLabel: "Activar apagado por SSH",
+    fieldSshEnableDesc: "Muestra un botón de apagado en el menú cuando este PC está en línea",
+    fieldSshUserLabel: "Usuario SSH",
+    fieldSshUserDesc: "Nombre de usuario en el PC (ej. cuenta de Windows)",
+    fieldSshPasswordLabel: "Contraseña SSH (Opcional)",
+    fieldSshPasswordDesc: "Dejar vacío si usas autenticación por clave SSH",
+    fieldSshPortLabel: "Puerto SSH",
+    fieldSshPortDesc: "Por defecto 22",
+    fieldSshOsLabel: "Sistema operativo del PC",
+    fieldSshOsDesc: "Windows envía 'shutdown /s /t 0', Linux envía 'systemctl poweroff'",
+    toastShutdownSentTitle: "Comando de apagado enviado",
+    toastShutdownSentBody: "Señal de apagado enviada a {name}.",
+    toastShutdownFailedTitle: "Fallo al apagar",
+    confirmShutdownTitle: "¿Apagar PC?",
+    confirmShutdownBody: "¿Seguro que quieres apagar '{name}'?",
+    confirmShutdownButton: "Apagar",
     btnDelete: "Eliminar",
     btnCancel: "Cancelar",
     btnSave: "Guardar",
@@ -338,6 +414,25 @@ const translations = {
     fieldRouterUserDesc: "Lascia vuoto per il rilevamento automatico dell'utente predefinito",
     fieldRouterIpLabel: "Indirizzo IP Router (Opzionale)",
     fieldRouterIpDesc: "Lascia vuoto per il rilevamento automatico del gateway",
+    btnShutdownPc: "⏻ Spegni",
+    btnShuttingDown: "Spegnimento...",
+    modalSectionSsh: "Spegnimento remoto via SSH (Opzionale)",
+    fieldSshEnableLabel: "Abilita spegnimento SSH",
+    fieldSshEnableDesc: "Mostra un pulsante di spegnimento nel menu quando questo PC è online",
+    fieldSshUserLabel: "Nome utente SSH",
+    fieldSshUserDesc: "Nome utente sul PC (es. account Windows)",
+    fieldSshPasswordLabel: "Password SSH (Opzionale)",
+    fieldSshPasswordDesc: "Lascia vuoto se usi l'autenticazione con chiave SSH",
+    fieldSshPortLabel: "Porta SSH",
+    fieldSshPortDesc: "Predefinita 22",
+    fieldSshOsLabel: "Sistema operativo del PC",
+    fieldSshOsDesc: "Windows invia 'shutdown /s /t 0', Linux invia 'systemctl poweroff'",
+    toastShutdownSentTitle: "Comando di spegnimento inviato",
+    toastShutdownSentBody: "Segnale di spegnimento inviato a {name}.",
+    toastShutdownFailedTitle: "Spegnimento non riuscito",
+    confirmShutdownTitle: "Spegnere il PC?",
+    confirmShutdownBody: "Sei sicuro di voler spegnere '{name}'?",
+    confirmShutdownButton: "Spegni",
     btnDelete: "Elimina",
     btnCancel: "Annulla",
     btnSave: "Salva",
@@ -398,6 +493,25 @@ const translations = {
     fieldRouterUserDesc: "Deixe em branco para detecção automática do usuário padrão",
     fieldRouterIpLabel: "Endereço IP do Roteador (Opcional)",
     fieldRouterIpDesc: "Deixe em branco para detecção automática do gateway",
+    btnShutdownPc: "⏻ Desligar",
+    btnShuttingDown: "Desligando...",
+    modalSectionSsh: "Desligamento remoto via SSH (Opcional)",
+    fieldSshEnableLabel: "Ativar desligamento via SSH",
+    fieldSshEnableDesc: "Mostra um botão de desligar no menu quando o PC estiver online",
+    fieldSshUserLabel: "Usuário SSH",
+    fieldSshUserDesc: "Nome de usuário no PC (ex: conta do Windows)",
+    fieldSshPasswordLabel: "Senha SSH (Opcional)",
+    fieldSshPasswordDesc: "Deixe em branco se usar autenticação por chave SSH",
+    fieldSshPortLabel: "Porta SSH",
+    fieldSshPortDesc: "Padrão é 22",
+    fieldSshOsLabel: "Sistema operacional do PC",
+    fieldSshOsDesc: "Windows envia 'shutdown /s /t 0', Linux envia 'systemctl poweroff'",
+    toastShutdownSentTitle: "Comando de desligamento enviado",
+    toastShutdownSentBody: "Sinal de desligamento enviado para {name}.",
+    toastShutdownFailedTitle: "Falha ao desligar",
+    confirmShutdownTitle: "Desligar o PC?",
+    confirmShutdownBody: "Tem certeza de que deseja desligar '{name}'?",
+    confirmShutdownButton: "Desligar",
     btnDelete: "Excluir",
     btnCancel: "Cancelar",
     btnSave: "Salvar",
@@ -458,6 +572,25 @@ const translations = {
     fieldRouterUserDesc: "Pozostaw puste dla automatycznego wykrycia domyślnego użytkownika",
     fieldRouterIpLabel: "Adres IP routera (Opcjonalnie)",
     fieldRouterIpDesc: "Pozostaw puste dla automatycznego wykrycia bramy",
+    btnShutdownPc: "⏻ Wyłącz",
+    btnShuttingDown: "Wyłączanie...",
+    modalSectionSsh: "Zdalne wyłączanie przez SSH (Opcjonalnie)",
+    fieldSshEnableLabel: "Włącz wyłączanie przez SSH",
+    fieldSshEnableDesc: "Pokazuje przycisk wyłączania w menu, gdy ten komputer jest online",
+    fieldSshUserLabel: "Użytkownik SSH",
+    fieldSshUserDesc: "Nazwa użytkownika na komputerze (np. konto Windows)",
+    fieldSshPasswordLabel: "Hasło SSH (Opcjonalnie)",
+    fieldSshPasswordDesc: "Pozostaw puste, jeśli używasz uwierzytelniania kluczem SSH",
+    fieldSshPortLabel: "Port SSH",
+    fieldSshPortDesc: "Domyślnie 22",
+    fieldSshOsLabel: "System operacyjny komputera",
+    fieldSshOsDesc: "Windows wysyła 'shutdown /s /t 0', Linux wysyła 'systemctl poweroff'",
+    toastShutdownSentTitle: "Wysłano polecenie wyłączenia",
+    toastShutdownSentBody: "Sygnał wyłączenia wysłany do {name}.",
+    toastShutdownFailedTitle: "Błąd wyłączania",
+    confirmShutdownTitle: "Wyłączyć komputer?",
+    confirmShutdownBody: "Czy na pewno chcesz wyłączyć '{name}'?",
+    confirmShutdownButton: "Wyłącz",
     btnDelete: "Usuń",
     btnCancel: "Anuluj",
     btnSave: "Zapisz",
@@ -518,6 +651,25 @@ const translations = {
     fieldRouterUserDesc: "Оставьте пустым для автоопределения пользователя по умолчанию",
     fieldRouterIpLabel: "IP-адрес роутера (Необязательно)",
     fieldRouterIpDesc: "Оставьте пустым для автоопределения шлюза",
+    btnShutdownPc: "⏻ Выключить",
+    btnShuttingDown: "Выключение...",
+    modalSectionSsh: "Удалённое выключение через SSH (Необязательно)",
+    fieldSshEnableLabel: "Включить выключение через SSH",
+    fieldSshEnableDesc: "Показывает кнопку выключения в меню, когда этот ПК в сети",
+    fieldSshUserLabel: "Имя пользователя SSH",
+    fieldSshUserDesc: "Имя пользователя на ПК (например, учётная запись Windows)",
+    fieldSshPasswordLabel: "Пароль SSH (Необязательно)",
+    fieldSshPasswordDesc: "Оставьте пустым при использовании SSH-ключа",
+    fieldSshPortLabel: "Порт SSH",
+    fieldSshPortDesc: "По умолчанию 22",
+    fieldSshOsLabel: "Операционная система ПК",
+    fieldSshOsDesc: "Windows отправляет 'shutdown /s /t 0', Linux отправляет 'systemctl poweroff'",
+    toastShutdownSentTitle: "Команда выключения отправлена",
+    toastShutdownSentBody: "Сигнал выключения отправлен на {name}.",
+    toastShutdownFailedTitle: "Ошибка выключения",
+    confirmShutdownTitle: "Выключить ПК?",
+    confirmShutdownBody: "Вы уверены, что хотите выключить '{name}'?",
+    confirmShutdownButton: "Выключить",
     btnDelete: "Удалить",
     btnCancel: "Отмена",
     btnSave: "Сохранить",
@@ -592,6 +744,57 @@ const saveWolTarget = callable("save_wol_target");
 const deleteWolTarget = callable("delete_wol_target");
 const pingTarget = callable("ping_target");
 const sendWol = callable("send_wol");
+const shutdownTarget = callable("shutdown_target");
+
+const ConfirmShutdownModal = ({ closeModal, targetName, onConfirm }) => {
+  const t = SP_REACT.useMemo(() => getTranslations(), []);
+  return SP_JSX.jsx(DFL.ModalRoot, {
+    onCancel: closeModal,
+    closeModal: closeModal,
+    children: SP_JSX.jsxs("div", {
+      style: { display: "flex", flexDirection: "column", gap: "12px", padding: "8px 4px" },
+      children: [
+        SP_JSX.jsx("h2", {
+          style: { margin: "0", fontSize: "18px", color: "#ffffff" },
+          children: t.confirmShutdownTitle,
+        }),
+        SP_JSX.jsx("div", {
+          style: { fontSize: "13px", color: "#b0b8c0", lineHeight: 1.5 },
+          children: formatString(t.confirmShutdownBody, { name: targetName }),
+        }),
+        SP_JSX.jsxs(DFL.Focusable, {
+          style: {
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "flex-end",
+            gap: "10px",
+            marginTop: "8px",
+          },
+          children: [
+            SP_JSX.jsx(DFL.DialogButton, {
+              style: { flex: "1" },
+              onClick: () => closeModal?.(),
+              children: t.btnCancel,
+            }),
+            SP_JSX.jsx(DFL.DialogButton, {
+              style: {
+                backgroundColor: "#dc3545",
+                color: "#ffffff",
+                fontWeight: 600,
+                flex: "1.2",
+              },
+              onClick: () => {
+                closeModal?.();
+                onConfirm();
+              },
+              children: t.confirmShutdownButton,
+            }),
+          ],
+        }),
+      ],
+    }),
+  });
+};
 
 // Target Configuration Modal
 const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => {
@@ -616,6 +819,21 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
   );
   const [routerIp, setRouterIp] = SP_REACT.useState(
     existingTarget?.router_ip ?? ""
+  );
+  const [sshEnabled, setSshEnabled] = SP_REACT.useState(
+    existingTarget?.ssh_enabled ?? false
+  );
+  const [sshUser, setSshUser] = SP_REACT.useState(
+    existingTarget?.ssh_user ?? ""
+  );
+  const [sshPassword, setSshPassword] = SP_REACT.useState(
+    existingTarget?.ssh_password ?? ""
+  );
+  const [sshPort, setSshPort] = SP_REACT.useState(
+    String(existingTarget?.ssh_port ?? 22)
+  );
+  const [sshOs, setSshOs] = SP_REACT.useState(
+    existingTarget?.ssh_os ?? "windows"
   );
   const [errorMsg, setErrorMsg] = SP_REACT.useState("");
   const [saving, setSaving] = SP_REACT.useState(false);
@@ -648,6 +866,11 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
         router_password: routerPassword,
         router_user: routerUser.trim(),
         router_ip: routerIp.trim(),
+        ssh_enabled: sshEnabled,
+        ssh_user: sshUser.trim(),
+        ssh_password: sshPassword,
+        ssh_port: parseInt(sshPort, 10) || 22,
+        ssh_os: sshOs || "windows",
       });
       if (res.success) {
         closeModal?.();
@@ -760,6 +983,48 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
           onChange: (e) => setPort(e.target.value),
           description: t.fieldPortDesc,
         }),
+        SP_JSX.jsx(DFL.ToggleField, {
+          label: t.fieldSshEnableLabel,
+          description: t.fieldSshEnableDesc,
+          checked: sshEnabled,
+          onChange: (val) => setSshEnabled(val),
+        }),
+        sshEnabled
+          ? SP_JSX.jsxs(SP_REACT.Fragment, {
+              children: [
+                SP_JSX.jsx(DFL.TextField, {
+                  label: t.fieldSshUserLabel,
+                  value: sshUser,
+                  onChange: (e) => setSshUser(e.target.value),
+                  description: t.fieldSshUserDesc,
+                }),
+                SP_JSX.jsx(DFL.TextField, {
+                  label: t.fieldSshPasswordLabel,
+                  value: sshPassword,
+                  bIsPassword: true,
+                  onChange: (e) => setSshPassword(e.target.value),
+                  description: t.fieldSshPasswordDesc,
+                }),
+                SP_JSX.jsx(DFL.DropdownItem, {
+                  label: t.fieldSshOsLabel,
+                  description: t.fieldSshOsDesc,
+                  rgOptions: [
+                    { data: "windows", label: "Windows (shutdown /s /t 0)" },
+                    { data: "linux", label: "Linux (systemctl poweroff)" },
+                  ],
+                  selectedOption: sshOs,
+                  onChange: (opt) => setSshOs(String(opt.data ?? "windows")),
+                }),
+                SP_JSX.jsx(DFL.TextField, {
+                  label: t.fieldSshPortLabel,
+                  value: sshPort,
+                  mustBeNumeric: true,
+                  onChange: (e) => setSshPort(e.target.value),
+                  description: t.fieldSshPortDesc,
+                }),
+              ],
+            })
+          : null,
         SP_JSX.jsxs(DFL.Focusable, {
           style: {
             display: "flex",
@@ -832,6 +1097,7 @@ const Content = () => {
   const [loading, setLoading] = SP_REACT.useState(true);
   const [switchingVpnId, setSwitchingVpnId] = SP_REACT.useState(null);
   const [wakingTargetIds, setWakingTargetIds] = SP_REACT.useState({});
+  const [shuttingDownTargetIds, setShuttingDownTargetIds] = SP_REACT.useState({});
 
   const mountedRef = SP_REACT.useRef(true);
   SP_REACT.useEffect(() => {
@@ -969,6 +1235,43 @@ const Content = () => {
         body: String(e?.message || e),
       });
     }
+  };
+
+  const handleShutdownTarget = (target) => {
+    DFL.showModal(
+      SP_JSX.jsx(ConfirmShutdownModal, {
+        targetName: target.name,
+        onConfirm: async () => {
+          setShuttingDownTargetIds((prev) => ({ ...prev, [target.id]: true }));
+          try {
+            const res = await shutdownTarget(target.id);
+            if (res.success) {
+              toaster.toast({
+                title: t.toastShutdownSentTitle,
+                body: formatString(t.toastShutdownSentBody, { name: target.name }),
+              });
+              setTimeout(() => {
+                if (mountedRef.current) refreshState(false);
+              }, 3000);
+            } else {
+              toaster.toast({
+                title: t.toastShutdownFailedTitle,
+                body: res.error || "Error",
+              });
+            }
+          } catch (e) {
+            toaster.toast({
+              title: t.toastShutdownFailedTitle,
+              body: String(e?.message || e),
+            });
+          } finally {
+            if (mountedRef.current) {
+              setShuttingDownTargetIds((prev) => ({ ...prev, [target.id]: false }));
+            }
+          }
+        },
+      })
+    );
   };
 
   const openTargetModal = (existing) => {
@@ -1218,6 +1521,24 @@ const Content = () => {
                                 ? t.btnStartVpnAndWake
                                 : t.btnWakePc,
                             }),
+                            target.ssh_enabled && isOnline
+                              ? SP_JSX.jsx(DFL.DialogButton, {
+                                  style: {
+                                    width: "auto",
+                                    padding: "8px 10px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    backgroundColor: "rgba(220, 53, 69, 0.4)",
+                                    color: "#ff9ea5",
+                                    border: "1px solid rgba(220, 53, 69, 0.6)",
+                                  },
+                                  disabled: Boolean(shuttingDownTargetIds[target.id]),
+                                  onClick: () => handleShutdownTarget(target),
+                                  children: shuttingDownTargetIds[target.id]
+                                    ? t.btnShuttingDown
+                                    : t.btnShutdownPc,
+                                })
+                              : null,
                             SP_JSX.jsx(DFL.DialogButton, {
                               style: {
                                 width: "auto",

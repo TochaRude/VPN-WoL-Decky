@@ -5,6 +5,7 @@ import json
 import os
 import re
 import socket
+import tempfile
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -116,16 +117,23 @@ class Plugin:
         return args
 
     async def _run_cmd(
-        self, args: List[str], timeout: float = 15.0, privileged: bool = False
+        self,
+        args: List[str],
+        timeout: float = 15.0,
+        privileged: bool = False,
+        extra_env: Optional[Dict[str, str]] = None,
     ) -> Tuple[int, str, str]:
         """Execute a system command asynchronously and return (returncode, stdout, stderr)."""
         cmd_args = self._priv_args(args) if privileged else args
         try:
+            env = self._clean_env()
+            if extra_env:
+                env.update(extra_env)
             proc = await asyncio.create_subprocess_exec(
                 *cmd_args,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=self._clean_env(),
+                env=env,
             )
             stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             stdout = stdout_b.decode("utf-8", errors="replace").strip()
@@ -446,6 +454,19 @@ class Plugin:
             router_ip = (target.get("router_ip") or "").strip()
             router_user = (target.get("router_user") or "").strip()
             router_password = target.get("router_password") or ""
+            ssh_enabled = bool(target.get("ssh_enabled", False))
+            ssh_user = (target.get("ssh_user") or "").strip()
+            ssh_password = target.get("ssh_password") or ""
+            try:
+                ssh_port = int(target.get("ssh_port", 22))
+                if not (1 <= ssh_port <= 65535):
+                    ssh_port = 22
+            except (ValueError, TypeError):
+                ssh_port = 22
+            ssh_os = (target.get("ssh_os") or "windows").strip().lower()
+            if ssh_os not in ("windows", "linux"):
+                ssh_os = "windows"
+            ssh_custom_cmd = (target.get("ssh_custom_cmd") or "").strip()
 
             try:
                 port = int(target.get("port", 9))
@@ -497,6 +518,12 @@ class Plugin:
                 "router_ip": router_ip,
                 "router_user": router_user,
                 "router_password": router_password,
+                "ssh_enabled": ssh_enabled,
+                "ssh_user": ssh_user,
+                "ssh_password": ssh_password,
+                "ssh_port": ssh_port,
+                "ssh_os": ssh_os,
+                "ssh_custom_cmd": ssh_custom_cmd,
             }
 
             if "wol_targets" not in self.settings:
@@ -1014,6 +1041,116 @@ class Plugin:
             "endpoints": sorted(sent_endpoints),
             "vpns": vpns,
         }
+
+    async def shutdown_target(self, target_id: str) -> Dict[str, Any]:
+        """Send a shutdown command to the remote PC via SSH."""
+        if "wol_targets" not in self.settings:
+            self._load_settings()
+        targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
+        target = next((t for t in targets if t.get("id") == target_id), None)
+        if not target:
+            return {"success": False, "error": "PC profile not found."}
+
+        ip = (target.get("ip") or "").strip()
+        if not ip:
+            return {"success": False, "error": "PC IP address is required for SSH shutdown."}
+
+        ssh_user = (target.get("ssh_user") or "").strip()
+        if not ssh_user:
+            return {"success": False, "error": "SSH username is required for remote shutdown."}
+
+        ssh_password = target.get("ssh_password") or ""
+        ssh_port = int(target.get("ssh_port") or 22)
+        ssh_os = (target.get("ssh_os") or "windows").lower()
+        ssh_custom_cmd = (target.get("ssh_custom_cmd") or "").strip()
+
+        if ssh_custom_cmd:
+            shutdown_cmd = ssh_custom_cmd
+        elif ssh_os == "linux":
+            shutdown_cmd = "systemctl poweroff || sudo poweroff || shutdown -h now"
+        else:
+            shutdown_cmd = "shutdown /s /t 0"
+
+        decky.logger.info(
+            f"Initiating SSH shutdown for '{target.get('name', 'PC')}' ({ssh_user}@{ip}:{ssh_port}, cmd='{shutdown_cmd}')..."
+        )
+
+        askpass_path: Optional[str] = None
+        extra_env: Dict[str, str] = {}
+        try:
+            ssh_args = [
+                "ssh",
+                "-p", str(ssh_port),
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "ConnectTimeout=6",
+                "-o", "ServerAliveInterval=3",
+                "-o", "ServerAliveCountMax=1",
+            ]
+
+            if ssh_password:
+                fd, askpass_path = tempfile.mkstemp(prefix="decky_askpass_", suffix=".sh")
+                with os.fdopen(fd, "w") as f:
+                    f.write("#!/bin/sh\n")
+                    f.write(f'printf "%s" {json.dumps(ssh_password)}\n')
+                os.chmod(askpass_path, 0o700)
+                extra_env["SSH_ASKPASS"] = askpass_path
+                extra_env["SSH_ASKPASS_REQUIRE"] = "force"
+                extra_env["DISPLAY"] = ":0"
+                ssh_args.extend(["-o", "PreferredAuthentications=password,keyboard-interactive,publickey"])
+            else:
+                ssh_args.extend(["-o", "BatchMode=yes"])
+
+            ssh_args.extend([f"{ssh_user}@{ip}", shutdown_cmd])
+
+            rc, stdout, stderr = await self._run_cmd(
+                ssh_args, timeout=12.0, extra_env=extra_env
+            )
+
+            combined_err = (stderr + " " + stdout).lower()
+            if rc == 0:
+                decky.logger.info(f"SSH shutdown command executed successfully on {ip}.")
+                return {"success": True}
+
+            if "permission denied" in combined_err or "authentication failed" in combined_err:
+                return {
+                    "success": False,
+                    "error": "SSH authentication failed. Please check your SSH username and password.",
+                }
+            if "connection refused" in combined_err:
+                return {
+                    "success": False,
+                    "error": f"SSH connection refused on {ip}:{ssh_port}. Is OpenSSH Server running on the PC?",
+                }
+            if "connection timed out" in combined_err or "timed out" in combined_err:
+                return {
+                    "success": False,
+                    "error": f"SSH connection to {ip}:{ssh_port} timed out. Ensure the PC is online and reachable.",
+                }
+
+            if rc in (255, 1) and any(
+                kw in combined_err
+                for kw in ("closed by remote host", "connection reset", "broken pipe")
+            ):
+                decky.logger.info(
+                    f"SSH connection closed by remote host during shutdown (rc={rc}). Assuming success."
+                )
+                return {"success": True}
+
+            decky.logger.warning(f"SSH shutdown returned exit code {rc}: {stderr or stdout}")
+            return {
+                "success": False,
+                "error": stderr or stdout or f"SSH exited with code {rc}",
+            }
+        except Exception as e:
+            decky.logger.error(f"SSH shutdown exception: {e}")
+            return {"success": False, "error": str(e)}
+        finally:
+            if askpass_path and os.path.exists(askpass_path):
+                try:
+                    os.remove(askpass_path)
+                except Exception:
+                    pass
 
     async def get_initial_state(self) -> Dict[str, Any]:
         """Return VPNs, configured WoL targets, and live ping statuses in one call."""
