@@ -1429,7 +1429,9 @@ const Content = () => {
                             justifyContent: "space-between",
                             alignItems: "center",
                             marginBottom: "4px",
+                            cursor: "pointer",
                           },
+                          onClick: () => openTargetModal(target),
                           children: [
                             SP_JSX.jsx("span", {
                               style: {
@@ -1491,40 +1493,64 @@ const Content = () => {
                                       : t.vpnAutoStartHint,
                                     ")",
                                   ],
-                                })
+                                  })
                               : null,
                           ],
                         }),
-                        SP_JSX.jsxs(DFL.Focusable, {
+                        SP_JSX.jsxs("div", {
                           style: {
                             display: "flex",
-                            flexDirection: "row",
-                            gap: "8px",
+                            flexDirection: "column",
+                            gap: "6px",
+                            width: "100%",
                           },
                           children: [
-                            SP_JSX.jsx(DFL.DialogButton, {
+                            SP_JSX.jsxs(DFL.Focusable, {
                               style: {
-                                flex: "1",
-                                padding: "8px 10px",
-                                fontSize: "13px",
-                                fontWeight: 600,
-                                backgroundColor: needsVpnActivation
-                                  ? "#2980b9"
-                                  : "#1a9fff",
-                                color: "#ffffff",
+                                display: "flex",
+                                flexDirection: "row",
+                                gap: "6px",
+                                width: "100%",
                               },
-                              disabled: isWaking,
-                              onClick: () => handleWakeTarget(target),
-                              children: isWaking
-                                ? t.btnSendingWol
-                                : needsVpnActivation
-                                ? t.btnStartVpnAndWake
-                                : t.btnWakePc,
+                              children: [
+                                SP_JSX.jsx(DFL.DialogButton, {
+                                  style: {
+                                    flex: "1",
+                                    padding: "8px 10px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    backgroundColor: needsVpnActivation
+                                      ? "#2980b9"
+                                      : "#1a9fff",
+                                    color: "#ffffff",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  },
+                                  disabled: isWaking,
+                                  onClick: () => handleWakeTarget(target),
+                                  children: isWaking
+                                    ? t.btnSendingWol
+                                    : needsVpnActivation
+                                    ? t.btnStartVpnAndWake
+                                    : t.btnWakePc,
+                                }),
+                                SP_JSX.jsx(DFL.DialogButton, {
+                                  style: {
+                                    width: "auto",
+                                    minWidth: "42px",
+                                    padding: "8px 12px",
+                                    fontSize: "14px",
+                                  },
+                                  onClick: () => openTargetModal(target),
+                                  children: "✎",
+                                }),
+                              ],
                             }),
                             target.ssh_enabled && isOnline
                               ? SP_JSX.jsx(DFL.DialogButton, {
                                   style: {
-                                    width: "auto",
+                                    width: "100%",
                                     padding: "8px 10px",
                                     fontSize: "13px",
                                     fontWeight: 600,
@@ -1539,16 +1565,6 @@ const Content = () => {
                                     : t.btnShutdownPc,
                                 })
                               : null,
-                            SP_JSX.jsx(DFL.DialogButton, {
-                              style: {
-                                width: "auto",
-                                minWidth: "42px",
-                                padding: "8px 12px",
-                                fontSize: "13px",
-                              },
-                              onClick: () => openTargetModal(target),
-                              children: "✎",
-                            }),
                           ],
                         }),
                       ],

@@ -431,7 +431,9 @@ const Content: FC = () => {
                       justifyContent: "space-between",
                       alignItems: "center",
                       marginBottom: "4px",
+                      cursor: "pointer",
                     }}
+                    onClick={() => openTargetModal(target)}
                   >
                     <span style={{ fontWeight: 700, fontSize: "15px", color: "#ffffff" }}>
                       {target.name}
@@ -476,38 +478,56 @@ const Content: FC = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <Focusable
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      gap: "8px",
-                    }}
-                  >
-                    <DialogButton
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
+                    <Focusable
                       style={{
-                        flex: "1",
-                        padding: "8px 10px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        backgroundColor: needsVpnActivation
-                          ? "#2980b9"
-                          : "#1a9fff",
-                        color: "#ffffff",
+                        display: "flex",
+                        flexDirection: "row",
+                        gap: "6px",
+                        width: "100%",
                       }}
-                      disabled={isWaking}
-                      onClick={() => handleWakeTarget(target)}
                     >
-                      {isWaking
-                        ? t.btnSendingWol
-                        : needsVpnActivation
-                        ? t.btnStartVpnAndWake
-                        : t.btnWakePc}
-                    </DialogButton>
+                      <DialogButton
+                        style={{
+                          flex: "1",
+                          padding: "8px 10px",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          backgroundColor: needsVpnActivation
+                            ? "#2980b9"
+                            : "#1a9fff",
+                          color: "#ffffff",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        disabled={isWaking}
+                        onClick={() => handleWakeTarget(target)}
+                      >
+                        {isWaking
+                          ? t.btnSendingWol
+                          : needsVpnActivation
+                          ? t.btnStartVpnAndWake
+                          : t.btnWakePc}
+                      </DialogButton>
+
+                      <DialogButton
+                        style={{
+                          width: "auto",
+                          minWidth: "42px",
+                          padding: "8px 12px",
+                          fontSize: "14px",
+                        }}
+                        onClick={() => openTargetModal(target)}
+                      >
+                        ✎
+                      </DialogButton>
+                    </Focusable>
 
                     {target.ssh_enabled && isOnline && (
                       <DialogButton
                         style={{
-                          width: "auto",
+                          width: "100%",
                           padding: "8px 10px",
                           fontSize: "13px",
                           fontWeight: 600,
@@ -521,19 +541,7 @@ const Content: FC = () => {
                         {shuttingDownTargetIds[target.id] ? t.btnShuttingDown : t.btnShutdownPc}
                       </DialogButton>
                     )}
-
-                    <DialogButton
-                      style={{
-                        width: "auto",
-                        minWidth: "42px",
-                        padding: "8px 12px",
-                        fontSize: "13px",
-                      }}
-                      onClick={() => openTargetModal(target)}
-                    >
-                      ✎
-                    </DialogButton>
-                  </Focusable>
+                  </div>
                 </div>
               </PanelSectionRow>
             );
