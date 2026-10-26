@@ -6,6 +6,7 @@ import os
 import re
 import socket
 import tempfile
+import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -64,6 +65,8 @@ def derive_subnet_gateway(ip_str: str) -> Optional[str]:
 class Plugin:
     settings_path: str = ""
     settings: Dict[str, Any] = {}
+    _router_user_cache: Dict[str, str] = {}
+    _shutdown_until: Dict[str, float] = {}
 
     def _get_settings_dir(self) -> str:
         """Resolve the persistent plugin settings directory provided by Decky Loader."""
@@ -574,6 +577,115 @@ class Plugin:
             "targets": targets,
         }
 
+    async def _check_router_host_active(
+        self,
+        router_ip: str,
+        mac: str,
+        router_user: str = "",
+        router_password: str = "",
+    ) -> Optional[bool]:
+        """
+        Query the router via TR-064 `GetSpecificHostEntry` (sent to `router_ip`, NEVER to `pc_ip`)
+        to check whether the target MAC is currently active (`NewActive` == 1 or 0).
+        Returns True if active, False if inactive, or None if the router could not be queried.
+        Because packets only go to `router_ip`, this never triggers router 'Wake on Access' for the PC.
+        """
+        if not router_ip or not mac:
+            return None
+
+        tr064_url = f"http://{router_ip}:49000/upnp/control/hosts"
+        soap_body = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
+            's:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">'
+            "<s:Body>"
+            '<u:GetSpecificHostEntry xmlns:u="urn:dslforum-org:service:Hosts:1">'
+            f"<NewMACAddress>{mac}</NewMACAddress>"
+            "</u:GetSpecificHostEntry>"
+            "</s:Body>"
+            "</s:Envelope>"
+        )
+
+        # 1. Try unauthenticated TR-064 query first (fast path if UPnP status is open)
+        rc, out, _ = await self._run_cmd(
+            [
+                "curl",
+                "-s",
+                "-m",
+                "2",
+                "-H",
+                'Content-Type: text/xml; charset="utf-8"',
+                "-H",
+                'SOAPACTION: "urn:dslforum-org:service:Hosts:1#GetSpecificHostEntry"',
+                "-d",
+                soap_body,
+                tr064_url,
+            ],
+            timeout=2.5,
+        )
+        if rc == 0 and out:
+            m = re.search(r"<NewActive>\s*([01])\s*</NewActive>", out)
+            if m:
+                return m.group(1) == "1"
+
+        # 2. If authentication is required and router_password is provided, query with Digest Auth
+        if not router_password:
+            return None
+
+        discovered_user = router_user.strip() or self._router_user_cache.get(router_ip, "")
+        if not discovered_user:
+            rc_u, xml_text, _ = await self._run_cmd(
+                ["curl", "-s", "-m", "2", f"http://{router_ip}/login_sid.lua?version=2"],
+                timeout=2.5,
+            )
+            if rc_u == 0 and xml_text:
+                last_user = ""
+                first_user = ""
+                for attrs, uname in re.findall(r"<User([^>]*)>([^<]+)</User>", xml_text):
+                    u_clean = uname.strip()
+                    if not u_clean:
+                        continue
+                    if not first_user:
+                        first_user = u_clean
+                    if 'last="1"' in attrs or "last='1'" in attrs:
+                        last_user = u_clean
+                discovered_user = last_user or first_user
+                if discovered_user:
+                    self._router_user_cache[router_ip] = discovered_user
+
+        candidate_users: List[str] = []
+        for u in (router_user.strip(), discovered_user, "dslf-config", "admin"):
+            if u and u not in candidate_users:
+                candidate_users.append(u)
+
+        for auth_user in candidate_users:
+            rc, out, _ = await self._run_cmd(
+                [
+                    "curl",
+                    "-s",
+                    "-m",
+                    "2",
+                    "--digest",
+                    "-u",
+                    f"{auth_user}:{router_password}",
+                    "-H",
+                    'Content-Type: text/xml; charset="utf-8"',
+                    "-H",
+                    'SOAPACTION: "urn:dslforum-org:service:Hosts:1#GetSpecificHostEntry"',
+                    "-d",
+                    soap_body,
+                    tr064_url,
+                ],
+                timeout=3.0,
+            )
+            if rc == 0 and out:
+                m = re.search(r"<NewActive>\s*([01])\s*</NewActive>", out)
+                if m:
+                    self._router_user_cache[router_ip] = auth_user
+                    return m.group(1) == "1"
+
+        return None
+
     async def ping_target(self, ip: str) -> Dict[str, Any]:
         """Ping a single IPv4 address (1 packet, 1s timeout) and return online status + latency."""
         ip = (ip or "").strip()
@@ -592,12 +704,27 @@ class Plugin:
             return {"online": True, "latency_ms": latency_ms}
         return {"online": False, "latency_ms": None}
 
-    async def ping_all_targets(self) -> Dict[str, Dict[str, Any]]:
-        """Ping all configured WoL targets concurrently and return a map of target_id -> status."""
+    async def ping_all_targets(
+        self, vpns: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Check online status of all configured WoL targets concurrently and return a map of target_id -> status.
+        To prevent accidentally waking an offline PC via router 'Wake on Access' (or NIC 'Wake on Pattern Match')
+        when a VPN is connected, this first checks the router's host table via TR-064 (`GetSpecificHostEntry`)
+        without sending any packet to the PC's IP address.
+        """
         if "wol_targets" not in self.settings:
             self._load_settings()
         targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
         results: Dict[str, Dict[str, Any]] = {}
+        if not targets:
+            return results
+
+        if vpns is None:
+            vpns = await self.get_vpns()
+        iface_map = await self._get_interface_map()
+        any_vpn_active = any(v.get("active") for v in vpns)
+        now = time.monotonic()
 
         async def _check_one(t: Dict[str, Any]) -> None:
             tid = t.get("id", "")
@@ -607,6 +734,55 @@ class Plugin:
             if not ip:
                 results[tid] = {"online": False, "latency_ms": None}
                 return
+
+            # 0. Respect post-shutdown cooldown so polling never wakes a PC that is shutting down
+            if now < self._shutdown_until.get(tid, 0.0):
+                results[tid] = {"online": False, "latency_ms": None}
+                return
+
+            # 1. If target is linked to a VPN that is currently disconnected, and we are not on the same local /24 subnet, skip pinging
+            vpn_id = (t.get("vpn_id") or "").strip()
+            if vpn_id:
+                linked_vpn = next(
+                    (v for v in vpns if v.get("id") == vpn_id or v.get("name") == vpn_id),
+                    None,
+                )
+                if linked_vpn and not linked_vpn.get("active"):
+                    target_bcast = derive_subnet_broadcast(ip)
+                    on_local_subnet = any(
+                        info.get("is_up") and info.get("broadcast") == target_bcast
+                        for info in iface_map.values()
+                        if target_bcast
+                    )
+                    if not on_local_subnet:
+                        results[tid] = {"online": False, "latency_ms": None}
+                        return
+
+            # 2. Check router TR-064 host status first (goes to router IP only, never touches PC IP!)
+            raw_mac = (t.get("mac") or "").strip()
+            if raw_mac:
+                try:
+                    norm_mac = normalize_mac(raw_mac)
+                    router_ip = (
+                        (t.get("router_ip") or "").strip()
+                        or derive_subnet_gateway(ip)
+                        or "192.168.178.1"
+                    )
+                    router_user = (t.get("router_user") or "").strip()
+                    router_password = t.get("router_password") or ""
+                    router_active = await self._check_router_host_active(
+                        router_ip, norm_mac, router_user, router_password
+                    )
+                    if router_active is False:
+                        results[tid] = {"online": False, "latency_ms": None}
+                        return
+                    if router_active is True and any_vpn_active:
+                        # Avoid sending ICMP packets directly to PC IP over VPN during background polls
+                        results[tid] = {"online": True, "latency_ms": None}
+                        return
+                except Exception:
+                    pass
+
             results[tid] = await self.ping_target(ip)
 
         await asyncio.gather(*[_check_one(t) for t in targets])
@@ -893,6 +1069,8 @@ class Plugin:
         if not target:
             return {"success": False, "error": "PC profile not found."}
 
+        self._shutdown_until.pop(target_id, None)
+
         try:
             normalized_mac = normalize_mac(target.get("mac", ""))
             magic_packet = create_magic_packet(normalized_mac)
@@ -1051,6 +1229,8 @@ class Plugin:
         if not target:
             return {"success": False, "error": "PC profile not found."}
 
+        self._shutdown_until.pop(target_id, None)
+
         ip = (target.get("ip") or "").strip()
         if not ip:
             return {"success": False, "error": "PC IP address is required for SSH shutdown."}
@@ -1109,6 +1289,7 @@ class Plugin:
 
             combined_err = (stderr + " " + stdout).lower()
             if rc == 0:
+                self._shutdown_until[target_id] = time.monotonic() + 180.0
                 decky.logger.info(f"SSH shutdown command executed successfully on {ip}.")
                 return {"success": True}
 
@@ -1132,6 +1313,7 @@ class Plugin:
                 kw in combined_err
                 for kw in ("closed by remote host", "connection reset", "broken pipe")
             ):
+                self._shutdown_until[target_id] = time.monotonic() + 180.0
                 decky.logger.info(
                     f"SSH connection closed by remote host during shutdown (rc={rc}). Assuming success."
                 )
@@ -1156,10 +1338,8 @@ class Plugin:
         """Return VPNs, configured WoL targets, and live ping statuses in one call."""
         if "wol_targets" not in self.settings:
             self._load_settings()
-        vpns, statuses = await asyncio.gather(
-            self.get_vpns(),
-            self.ping_all_targets(),
-        )
+        vpns = await self.get_vpns()
+        statuses = await self.ping_all_targets(vpns=vpns)
         return {
             "vpns": vpns,
             "targets": self.settings.get("wol_targets", []),
