@@ -254,10 +254,10 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshOsDesc: "Windows sendet 'shutdown /s /t 0', Linux sendet 'systemctl poweroff'",
     fieldSshAutoLoginLabel: "Auto-Login nach WoL (Windows PIN)",
     fieldSshAutoLoginDesc:
-      "Meldet den Windows-Benutzer nach Wake-on-LAN automatisch per PIN am Sperrbildschirm an (ideal für Steam Remote Play)",
-    fieldSshPinLabel: "Windows Hello PIN",
+      "Meldet deinen normalen Windows-Hauptbenutzer nach Wake-on-LAN automatisch per PIN am Sperrbildschirm an (der SSH-Nutzer führt nur den Befehl im Hintergrund aus)",
+    fieldSshPinLabel: "Windows Hello PIN (Hauptbenutzer)",
     fieldSshPinDesc:
-      "Wird nach dem Aufwecken per SSH an den Windows-Anmeldebildschirm gesendet",
+      "PIN deines normalen Windows-Benutzers für den Sperrbildschirm (nicht das SSH-Passwort)",
     errPinRequired: "Bitte gib deine Windows Hello PIN für den Auto-Login ein.",
     btnLoginPc: "🔓 Anmelden (PIN)",
     btnLoggingIn: "Melde an...",
