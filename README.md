@@ -27,9 +27,10 @@ A Decky Loader plugin for **SteamOS / CachyOS / Bazzite / Linux Handhelds** (Ste
 - **Live Ping Status & Wake-up Watcher**:
   - Shows live reachability (`Online (12 ms)` vs. `Offline`).
   - Automatically polls the target PC after sending WoL and displays a Steam Toast notification as soon as the PC comes online.
-- **Layer-3 VPN & Router Auto-Wake Support**:
+- **Layer-3 VPN, Router TR-064 & Auto-Wake Support**:
+  - **Router TR-064 Wake-on-LAN (e.g. FRITZ!Box)**: Optionally configure your router password to instruct the router via TR-064 (`WakeOnLANByMACAddress`) to broadcast a true Layer-2 Magic Packet inside your home LAN — works reliably even over mobile WireGuard VPN when the PC has been powered off for hours and its ARP entry has expired. *(Tip: When using TR-064, leave the router's automatic "Wake on internet access" checkbox disabled so live ping checks never wake your PC unintentionally).*
   - Sends the 102-byte Magic Packet simultaneously via **direct UDP unicast** to the PC IP, **directed subnet broadcast** (e.g. `192.168.1.255`), and **global broadcast** (`255.255.255.255`), bound directly to the VPN interface (`SO_BINDTODEVICE`) as well as standard kernel routing.
-  - Optional **Router Auto-Wake / ARP Trigger**: Sends ICMP Ping & TCP SYN probes to the target IP to refresh router ARP caches or trigger router *Wake-on-Access* features when waking a PC that has been powered off for a long time.
+  - Optional **Router Auto-Wake / ARP Trigger**: Sends ICMP Ping & TCP SYN probes to the target IP when waking a PC if your router does not use TR-064.
 
 ### 3. Remote PC Shutdown & Windows Hello PIN Auto-Login via SSH
 - **1-Click Remote Shutdown (Windows & Linux)**:
