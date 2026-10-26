@@ -4,13 +4,12 @@ A Decky Loader plugin for **SteamOS / CachyOS / Bazzite / Linux Handhelds** (Ste
 
 🌍 **Multi-language support:** Automatically adapts to your Steam / system language (**English, Deutsch, Français, Español, Italiano, Português, Polski, Русский**).
 
-> 💡 **About this project / Über dieses Projekt:**
-> - **EN:** I had the idea for this plugin because I couldn't find any existing Decky plugin that lets you easily switch VPN connections and wake up your home PC via Wake-on-LAN over that VPN. Because of that, I decided to vibe-code it myself — everyone is warmly welcome to test, use, and share feedback!
-> - **DE:** Ich hatte die Idee zu diesem Plugin, da ich leider selbst kein passendes Decky-Plugin gefunden habe, mit dem man vorhandene VPNs umschalten und darüber seinen PC per Wake-on-LAN aufwecken kann. Aus diesem Grund habe ich es kurzerhand selbst per Vibe-Coding umgesetzt – jeder ist herzlich eingeladen, es zu testen und zu nutzen!
+> 💡 **About this project:**
+> I had the idea for this plugin because I couldn't find any existing Decky plugin that lets you easily switch VPN connections and wake up your home PC via Wake-on-LAN over that VPN. Because of that, I decided to vibe-code it myself — everyone is warmly welcome to test, use, and share feedback!
 
 ---
 
-## Features (English)
+## Features
 
 ### 1. VPN Management (NetworkManager & WireGuard)
 - **Automatic Discovery**:
@@ -32,63 +31,38 @@ A Decky Loader plugin for **SteamOS / CachyOS / Bazzite / Linux Handhelds** (Ste
   - Sends the 102-byte Magic Packet simultaneously via **direct UDP unicast** to the PC IP, **directed subnet broadcast** (e.g. `192.168.1.255`), and **global broadcast** (`255.255.255.255`), bound directly to the VPN interface (`SO_BINDTODEVICE`) as well as standard kernel routing.
   - Optional **Router Auto-Wake / ARP Trigger**: Sends ICMP Ping & TCP SYN probes to the target IP to refresh router ARP caches or trigger router *Wake-on-Access* features when waking a PC that has been powered off for a long time.
 
-### 3. Remote PC Shutdown via SSH (Windows & Linux)
-- **1-Click Remote Shutdown**:
+### 3. Remote PC Shutdown & Windows Hello PIN Auto-Login via SSH
+- **1-Click Remote Shutdown (Windows & Linux)**:
   - Displays a red **⏻ Shutdown** button when your target PC is online.
   - Opens a confirmation dialog before sending the shutdown command to prevent accidental shutdowns.
-- **SSH Protocol**:
-  - Secure and lightweight: connects directly to the target PC over SSH.
-  - Windows command: `shutdown /s /t 0`
-  - Linux command: `systemctl poweroff`
-  - Supports SSH username, password, custom ports, and optional custom commands.
+  - Windows command: `shutdown /s /t 0` | Linux command: `systemctl poweroff`
+- **Windows Hello PIN Auto-Login (for Steam Remote Play / Sunshine / Moonlight)**:
+  - Steam Remote Play and many streaming hosts only become available *after* a user logs into the Windows desktop session.
+  - Enable **Auto-login after Wake-on-LAN (Windows Hello PIN)** to automatically unlock the Windows lock screen using your Windows Hello PIN as soon as the PC boots up after WoL.
+  - Also adds a manual **🔓 Login (PIN)** button next to the Shutdown button whenever the PC is online.
+- **SSH Authentication (SSH Keys & Password)**:
+  - Automatically discovers your user's SSH private keys (`~/.ssh/id_ed25519`, `id_rsa`, `id_ecdsa`) on the handheld, or uses an SSH password if configured.
+  - **Windows 10/11 OpenSSH Setup Tip**:
+    Run in an elevated **PowerShell (as Administrator)** on your Windows PC:
+    ```powershell
+    # 1. Enable and start OpenSSH Server
+    Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+    Start-Service sshd
+    Set-Service -Name sshd -StartupType 'Automatic'
+
+    # 2. (Optional, recommended) Register your handheld's SSH public key for admin users
+    $pubKey = "ssh-ed25519 AAAA... your-public-key"
+    $authFile = "C:\ProgramData\ssh\administrators_authorized_keys"
+    Add-Content -Path $authFile -Value $pubKey -Encoding Ascii
+    icacls.exe $authFile /inheritance:r /grant "*S-1-5-18:F" /grant "*S-1-5-32-544:F"
+    Restart-Service sshd
+    ```
 
 ### Installation
 1. Download **[`VPN-WoL.zip`](https://github.com/TochaRude/VPN-WoL-Decky/releases/latest)** from the **[Releases](https://github.com/TochaRude/VPN-WoL-Decky/releases)** section.
 2. In Steam Game Mode, open **Decky Loader Settings** -> **General** -> enable **Developer Mode**.
 3. Go to **Developer** -> **Install Plugin from ZIP File** and select `VPN-WoL.zip`.
    *(Alternatively, run `./install.sh` from a terminal).*
-
----
-
-## Funktionen (Deutsch)
-
-### 1. VPN-Verwaltung (NetworkManager & WireGuard)
-- **Automatische Erkennung**:
-  - Liest alle in **NetworkManager (`nmcli`)** hinterlegten VPN- und WireGuard-Profile sowie **`/etc/wireguard/*.conf` (`wg-quick`)** aus.
-- **Direktes Umschalten**:
-  - Ein-/Ausschalten jedes VPNs direkt im Decky Quick Access Menü inkl. Anzeige von Verbindungsstatus, Tunnel-IP und Interface.
-
-### 2. Wake-on-LAN über VPN & Heimnetz
-- **PC-Profile direkt in der UI verwalten**:
-  - Name, MAC-Adresse, lokale IP-Adresse, Port und verknüpftes VPN-Profil.
-- **1-Klick „⚡ VPN starten & wecken"**:
-  - Verbindet ein zugeordnetes VPN bei Bedarf automatisch vor dem Senden des Wake-on-LAN-Pakets.
-- **Live Ping-Status & Aufwach-Überwachung**:
-  - Zeigt live an, ob der PC erreichbar ist (`Online (12 ms)` / `Offline`), und benachrichtigt per Steam-Toast, sobald der geweckte PC antwortet.
-- **Router Auto-Wake / ARP-Trigger**:
-  - Kombiniert UDP-Magic-Packets (Unicast, Subnet-Broadcast & `SO_BINDTODEVICE`) mit optionalen Ping-/TCP-Impulsen, damit Router den ARP-Cache auflösen bzw. *Wake-on-Access*-Funktionen (automatisches Starten bei Zugriff aus dem VPN) zuverlässig auslösen.
-
-### 3. Remote-PC Herunterfahren via SSH (Windows & Linux)
-- **1-Klick Herunterfahren**:
-  - Sobald der Ziel-PC online ist, erscheint eine rote Schaltfläche **⏻ Herunterfahren**.
-  - Vor dem Senden erscheint ein Bestätigungsdialog, um versehentliches Abschalten zu verhindern.
-- **SSH-basiert**:
-  - Sicher und schlank: verbindet sich per SSH direkt mit dem PC.
-  - Windows: `shutdown /s /t 0`
-  - Linux: `systemctl poweroff`
-  - Unterstützt SSH-Benutzername, Passwort, abweichende Ports sowie benutzerdefinierte Befehle.
-- **Tipp für Windows 10/11**:
-  - OpenSSH Server lässt sich in Windows mit wenigen PowerShell-Befehlen (als Administrator) aktivieren:
-    ```powershell
-    Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-    Start-Service sshd
-    Set-Service -Name sshd -StartupType 'Automatic'
-    ```
-
-### Installation
-1. Lade **[`VPN-WoL.zip`](https://github.com/TochaRude/VPN-WoL-Decky/releases/latest)** im Bereich **[Releases](https://github.com/TochaRude/VPN-WoL-Decky/releases)** herunter.
-2. Öffne im Steam Game Mode die **Decky Loader Einstellungen** -> aktiviere unter **General** den **Developer Mode**.
-3. Wähle unter **Developer** -> **Install Plugin from ZIP File** die Datei `VPN-WoL.zip` aus (oder führe `./install.sh` im Terminal aus).
 
 ---
 
