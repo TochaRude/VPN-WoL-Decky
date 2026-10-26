@@ -9,6 +9,7 @@ import socket
 import tempfile
 import time
 import uuid
+import zlib
 from typing import Any, Dict, List, Optional, Tuple
 
 import decky
@@ -1247,21 +1248,47 @@ class Plugin:
 
     def _build_windows_pin_unlock_cmd(self, pin: str) -> str:
         """
-        Build a self-contained PowerShell -EncodedCommand that compiles a tiny helper executable,
-        launches it as SYSTEM inside the active Console Session on the WinSta0\\Winlogon secure desktop,
-        wakes/dismisses the Windows lock screen cover, and enters the Windows Hello PIN via SendInput.
+        Build a self-contained, Deflate-compressed PowerShell command (< 4000 chars, well under
+        cmd.exe's 8191-char limit) that compiles a tiny helper executable in $env:TEMP,
+        ensures the normal desktop user (never the SSH helper user) is selected in LogonUI,
+        launches the helper as SYSTEM inside the active Console Session on WinSta0\\Winlogon,
+        dismisses the Windows lock screen cover, and enters the Windows Hello PIN via SendInput.
         """
         pin_b64 = base64.b64encode(pin.encode("utf-8")).decode("ascii")
         ps_script = f"""$ErrorActionPreference = "Stop"
 $pinB64 = "{pin_b64}"
-$workDir = Join-Path $env:windir "Temp"
-if (-not (Test-Path $workDir)) {{ $workDir = $env:TEMP }}
+$sshUser = $env:USERNAME
+$workDir = $env:TEMP
+if (-not $workDir -or -not (Test-Path $workDir)) {{ $workDir = "C:\\Users\\Public" }}
 $exePath = Join-Path $workDir "decky_winunlock.exe"
 $statusPath = "$exePath.status"
 $taskName = "DeckyWoLAutoLogin"
 
 Get-Process -Name "decky_winunlock*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Remove-Item -Force $exePath, $statusPath -ErrorAction SilentlyContinue
+
+try {{
+    $logonUiKey = "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI"
+    $curLogon = Get-ItemProperty $logonUiKey -ErrorAction SilentlyContinue
+    $lastUser = ($curLogon.LastLoggedOnUser -as [string])
+    if ($sshUser -and $lastUser -and ($lastUser -like "*\\$sshUser" -or $lastUser -eq $sshUser)) {{
+        $profiles = Get-ChildItem "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList" -ErrorAction SilentlyContinue | Where-Object {{ $_.PSChildName -like "S-1-5-21-*" }}
+        foreach ($p in $profiles) {{
+            $sid = $p.PSChildName
+            try {{
+                $nt = (New-Object System.Security.Principal.SecurityIdentifier($sid)).Translate([System.Security.Principal.NTAccount]).Value
+                $short = $nt.Split('\\')[-1]
+                if ($short -ne $sshUser -and $short -notin @("WsiAccount", "Administrator", "DefaultAccount", "Guest", "WDAGUtilityAccount")) {{
+                    Set-ItemProperty -Path $logonUiKey -Name "SelectedUserSID" -Value $sid -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path $logonUiKey -Name "LastLoggedOnUserSID" -Value $sid -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path $logonUiKey -Name "LastLoggedOnUser" -Value ".\\$short" -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path $logonUiKey -Name "LastLoggedOnSAMUser" -Value ".\\$short" -ErrorAction SilentlyContinue
+                    break
+                }}
+            }} catch {{}}
+        }}
+    }}
+}} catch {{}}
 
 $csCode = @'
 using System;
@@ -1496,13 +1523,13 @@ public class DeckyWinUnlock {{
         try {{
             mouse_event(0x0001, 1, 1, 0, UIntPtr.Zero);
             Thread.Sleep(150);
-            SendVk(0x1B); // VK_ESCAPE
+            SendVk(0x1B);
             Thread.Sleep(250);
-            SendVk(0x20); // VK_SPACE
+            SendVk(0x20);
             Thread.Sleep(1000);
 
             for (int i = 0; i < 10; i++) {{
-                SendVk(0x08); // VK_BACK
+                SendVk(0x08);
                 Thread.Sleep(20);
             }}
             Thread.Sleep(150);
@@ -1517,7 +1544,7 @@ public class DeckyWinUnlock {{
             }}
 
             Thread.Sleep(250);
-            SendVk(0x0D); // VK_RETURN
+            SendVk(0x0D);
         }} finally {{
             if (hDesk != IntPtr.Zero) CloseDesktop(hDesk);
         }}
@@ -1534,7 +1561,6 @@ public class DeckyWinUnlock {{
                 return 0;
             }}
 
-            // Wait up to 15s for LogonUI to be active and at least 3s old after early boot
             for (int w = 0; w < 30; w++) {{
                 if (IsUnlocked(sid)) {{
                     File.WriteAllText(statusPath, "ALREADY_UNLOCKED");
@@ -1628,7 +1654,11 @@ public class DeckyWinUnlock {{
 
 try {{
     Add-Type -TypeDefinition $csCode -OutputAssembly $exePath -OutputType ConsoleApplication
-    schtasks.exe /Create /TN $taskName /TR "`"$exePath`" --service" /SC ONCE /ST 00:00 /RU SYSTEM /RL HIGHEST /F | Out-Null
+    $stOut = schtasks.exe /Create /TN $taskName /TR "`"$exePath`" --service" /SC ONCE /ST 00:00 /RU SYSTEM /RL HIGHEST /F 2>&1
+    if ($LASTEXITCODE -ne 0) {{
+        Write-Output ("ERR_SCHTASKS:" + ($stOut -join " "))
+        exit 1
+    }}
     schtasks.exe /Run /TN $taskName | Out-Null
 
     Start-Sleep -Milliseconds 400
@@ -1651,8 +1681,15 @@ try {{
     Remove-Item -Force $exePath, $statusPath -ErrorAction SilentlyContinue
 }}
 """
-        encoded = base64.b64encode(ps_script.encode("utf-16le")).decode("ascii")
-        return f"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded}"
+        compact_lines = [line.strip() for line in ps_script.splitlines() if line.strip()]
+        compact_script = "\n".join(compact_lines)
+        compressor = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+        compressed = compressor.compress(compact_script.encode("utf-8")) + compressor.flush()
+        b64_deflate = base64.b64encode(compressed).decode("ascii")
+        return (
+            "powershell.exe -NoProfile -NonInteractive -InputFormat None -ExecutionPolicy Bypass "
+            f'-Command "&([scriptblock]::Create((New-Object IO.StreamReader((New-Object IO.Compression.DeflateStream([IO.MemoryStream][Convert]::FromBase64String(\'{b64_deflate}\'),[IO.Compression.CompressionMode]::Decompress)),[Text.Encoding]::UTF8)).ReadToEnd()))"'
+        )
 
     async def _wait_for_tcp_port(
         self, ip: str, port: int, timeout_total: float = 35.0
@@ -1772,6 +1809,7 @@ try {{
                 ssh_args = [
                     "ssh",
                     "-p", str(ssh_port),
+                    "-o", "LogLevel=ERROR",
                     "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null",
                     "-o", "ConnectTimeout=8",
@@ -1839,6 +1877,12 @@ try {{
                         "error": "Windows lock screen did not unlock after entering PIN. Please verify your Windows Hello PIN.",
                     }
 
+                if "err_schtasks" in combined_lower:
+                    return {
+                        "success": False,
+                        "error": f"SSH user '{ssh_user}' needs Windows Administrator privileges to unlock the lock screen ({combined_out}).",
+                    }
+
                 decky.logger.warning(
                     f"SSH Windows login returned rc={rc}, output={combined_out}"
                 )
@@ -1897,6 +1941,7 @@ try {{
             ssh_args = [
                 "ssh",
                 "-p", str(ssh_port),
+                "-o", "LogLevel=ERROR",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "UserKnownHostsFile=/dev/null",
                 "-o", "ConnectTimeout=6",
