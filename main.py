@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import glob
 import ipaddress
 import json
@@ -67,6 +68,9 @@ class Plugin:
     settings: Dict[str, Any] = {}
     _router_user_cache: Dict[str, str] = {}
     _shutdown_until: Dict[str, float] = {}
+    _login_locks: Dict[str, asyncio.Lock] = {}
+    _auto_login_tasks: Dict[str, asyncio.Task] = {}
+    _last_login_result: Dict[str, Tuple[float, Dict[str, Any]]] = {}
 
     def _get_settings_dir(self) -> str:
         """Resolve the persistent plugin settings directory provided by Decky Loader."""
@@ -470,6 +474,8 @@ class Plugin:
             if ssh_os not in ("windows", "linux"):
                 ssh_os = "windows"
             ssh_custom_cmd = (target.get("ssh_custom_cmd") or "").strip()
+            ssh_auto_login = bool(target.get("ssh_auto_login", False)) and ssh_os == "windows"
+            ssh_pin = target.get("ssh_pin") or ""
 
             try:
                 port = int(target.get("port", 9))
@@ -527,6 +533,8 @@ class Plugin:
                 "ssh_port": ssh_port,
                 "ssh_os": ssh_os,
                 "ssh_custom_cmd": ssh_custom_cmd,
+                "ssh_auto_login": ssh_auto_login,
+                "ssh_pin": ssh_pin,
             }
 
             if "wol_targets" not in self.settings:
@@ -1213,12 +1221,640 @@ class Plugin:
         decky.logger.info(
             f"Sent WoL to '{target_name}' ({normalized_mac}). Endpoints: {sorted(sent_endpoints)}"
         )
+
+        # 6. If Windows SSH Auto-Login is enabled, start background watcher to unlock Windows once booted
+        if (
+            target.get("ssh_enabled")
+            and target.get("ssh_auto_login")
+            and target.get("ssh_pin")
+            and (target.get("ssh_os") or "windows").lower() == "windows"
+            and pc_ip
+        ):
+            existing_task = self._auto_login_tasks.get(target_id)
+            if existing_task and not existing_task.done():
+                existing_task.cancel()
+            self._last_login_result.pop(target_id, None)
+            self._auto_login_tasks[target_id] = asyncio.create_task(
+                self._auto_login_after_wol(target_id)
+            )
+
         return {
             "success": True,
             "vpn_activated": vpn_was_activated,
             "endpoints": sorted(sent_endpoints),
             "vpns": vpns,
         }
+
+    def _build_windows_pin_unlock_cmd(self, pin: str) -> str:
+        """
+        Build a self-contained PowerShell -EncodedCommand that compiles a tiny helper executable,
+        launches it as SYSTEM inside the active Console Session on the WinSta0\\Winlogon secure desktop,
+        wakes/dismisses the Windows lock screen cover, and enters the Windows Hello PIN via SendInput.
+        """
+        pin_b64 = base64.b64encode(pin.encode("utf-8")).decode("ascii")
+        ps_script = f"""$ErrorActionPreference = "Stop"
+$pinB64 = "{pin_b64}"
+$workDir = Join-Path $env:windir "Temp"
+if (-not (Test-Path $workDir)) {{ $workDir = $env:TEMP }}
+$exePath = Join-Path $workDir "decky_winunlock.exe"
+$statusPath = "$exePath.status"
+$taskName = "DeckyWoLAutoLogin"
+
+Get-Process -Name "decky_winunlock*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Remove-Item -Force $exePath, $statusPath -ErrorAction SilentlyContinue
+
+$csCode = @'
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+
+public class DeckyWinUnlock {{
+    private const string PinB64 = "{pin_b64}";
+
+    [DllImport("kernel32.dll")]
+    public static extern uint WTSGetActiveConsoleSessionId();
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr GetCurrentProcess();
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool DuplicateTokenEx(
+        IntPtr hExistingToken,
+        uint dwDesiredAccess,
+        IntPtr lpTokenAttributes,
+        int ImpersonationLevel,
+        int TokenType,
+        out IntPtr phNewToken);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool SetTokenInformation(
+        IntPtr TokenHandle,
+        int TokenInformationClass,
+        ref uint TokenInformation,
+        uint TokenInformationLength);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool CreateProcessAsUserW(
+        IntPtr hToken,
+        string lpApplicationName,
+        string lpCommandLine,
+        IntPtr lpProcessAttributes,
+        IntPtr lpThreadAttributes,
+        bool bInheritHandles,
+        uint dwCreationFlags,
+        IntPtr lpEnvironment,
+        string lpCurrentDirectory,
+        ref STARTUPINFO lpStartupInfo,
+        out PROCESS_INFORMATION lpProcessInformation);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern IntPtr OpenDesktop(string lpszDesktop, uint dwFlags, bool fInherit, uint dwDesiredAccess);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr OpenInputDesktop(uint dwFlags, bool fInherit, uint dwDesiredAccess);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetThreadDesktop(IntPtr hDesktop);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool CloseDesktop(IntPtr hDesktop);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool GetUserObjectInformationW(
+        IntPtr hObj,
+        int nIndex,
+        StringBuilder pvInfo,
+        int nLength,
+        out int lpnLengthNeeded);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll")]
+    public static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    [DllImport("user32.dll")]
+    public static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, UIntPtr dwExtraInfo);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct STARTUPINFO {{
+        public int cb;
+        public string lpReserved;
+        public string lpDesktop;
+        public string lpTitle;
+        public int dwX;
+        public int dwY;
+        public int dwXSize;
+        public int dwYSize;
+        public int dwXCountChars;
+        public int dwYCountChars;
+        public int dwFillAttribute;
+        public int dwFlags;
+        public short wShowWindow;
+        public short cbReserved2;
+        public IntPtr lpReserved2;
+        public IntPtr hStdInput;
+        public IntPtr hStdOutput;
+        public IntPtr hStdError;
+    }}
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PROCESS_INFORMATION {{
+        public IntPtr hProcess;
+        public IntPtr hThread;
+        public int dwProcessId;
+        public int dwThreadId;
+    }}
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT {{
+        public uint type;
+        public InputUnion U;
+    }}
+
+    [StructLayout(LayoutKind.Explicit)]
+    public struct InputUnion {{
+        [FieldOffset(0)] public MOUSEINPUT mi;
+        [FieldOffset(0)] public KEYBDINPUT ki;
+    }}
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT {{
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public UIntPtr dwExtraInfo;
+    }}
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KEYBDINPUT {{
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public UIntPtr dwExtraInfo;
+    }}
+
+    public static string GetInputDesktopName() {{
+        IntPtr hDesk = OpenInputDesktop(0, false, 0x02000000);
+        if (hDesk == IntPtr.Zero) return "";
+        try {{
+            StringBuilder sb = new StringBuilder(256);
+            int needed;
+            if (GetUserObjectInformationW(hDesk, 2, sb, sb.Capacity * 2, out needed)) {{
+                return sb.ToString();
+            }}
+            return "";
+        }} finally {{
+            CloseDesktop(hDesk);
+        }}
+    }}
+
+    public static Process GetProcessInSession(string procName, int sessionId) {{
+        try {{
+            Process[] procs = Process.GetProcessesByName(procName);
+            foreach (Process p in procs) {{
+                try {{
+                    if (p.SessionId == sessionId) return p;
+                }} catch {{}}
+            }}
+        }} catch {{}}
+        return null;
+    }}
+
+    public static bool IsUnlocked(int sessionId) {{
+        string desk = GetInputDesktopName();
+        bool hasLogonUi = GetProcessInSession("LogonUI", sessionId) != null;
+        if (string.Equals(desk, "Default", StringComparison.OrdinalIgnoreCase) && !hasLogonUi) {{
+            return true;
+        }}
+        return false;
+    }}
+
+    public static void SendVk(ushort vk) {{
+        ushort scan = (ushort)MapVirtualKey(vk, 0);
+        int sz = Marshal.SizeOf(typeof(INPUT));
+        INPUT down = new INPUT();
+        down.type = 1;
+        down.U.ki.wVk = vk;
+        down.U.ki.wScan = scan;
+        down.U.ki.dwFlags = 0;
+        SendInput(1, new INPUT[] {{ down }}, sz);
+        Thread.Sleep(35);
+
+        INPUT up = new INPUT();
+        up.type = 1;
+        up.U.ki.wVk = vk;
+        up.U.ki.wScan = scan;
+        up.U.ki.dwFlags = 2;
+        SendInput(1, new INPUT[] {{ up }}, sz);
+    }}
+
+    public static void SendUnicodeChar(char ch) {{
+        int sz = Marshal.SizeOf(typeof(INPUT));
+        INPUT down = new INPUT();
+        down.type = 1;
+        down.U.ki.wVk = 0;
+        down.U.ki.wScan = (ushort)ch;
+        down.U.ki.dwFlags = 4;
+        SendInput(1, new INPUT[] {{ down }}, sz);
+        Thread.Sleep(35);
+
+        INPUT up = new INPUT();
+        up.type = 1;
+        up.U.ki.wVk = 0;
+        up.U.ki.wScan = (ushort)ch;
+        up.U.ki.dwFlags = 6;
+        SendInput(1, new INPUT[] {{ up }}, sz);
+    }}
+
+    public static void TypePinOnWinlogon(string pin) {{
+        IntPtr hDesk = OpenDesktop("Winlogon", 0, false, 0x01FF);
+        if (hDesk == IntPtr.Zero) {{
+            hDesk = OpenInputDesktop(0, false, 0x02000000);
+        }}
+        if (hDesk != IntPtr.Zero) {{
+            SetThreadDesktop(hDesk);
+        }}
+        try {{
+            mouse_event(0x0001, 1, 1, 0, UIntPtr.Zero);
+            Thread.Sleep(150);
+            SendVk(0x1B); // VK_ESCAPE
+            Thread.Sleep(250);
+            SendVk(0x20); // VK_SPACE
+            Thread.Sleep(1000);
+
+            for (int i = 0; i < 10; i++) {{
+                SendVk(0x08); // VK_BACK
+                Thread.Sleep(20);
+            }}
+            Thread.Sleep(150);
+
+            foreach (char c in pin) {{
+                if (c >= '0' && c <= '9') {{
+                    SendVk((ushort)c);
+                }} else {{
+                    SendUnicodeChar(c);
+                }}
+                Thread.Sleep(75);
+            }}
+
+            Thread.Sleep(250);
+            SendVk(0x0D); // VK_RETURN
+        }} finally {{
+            if (hDesk != IntPtr.Zero) CloseDesktop(hDesk);
+        }}
+    }}
+
+    public static int Main(string[] args) {{
+        string exePath = Process.GetCurrentProcess().MainModule.FileName;
+        string statusPath = exePath + ".status";
+
+        if (args.Length >= 1 && args[0] == "--worker") {{
+            int sid = (int)WTSGetActiveConsoleSessionId();
+            if (IsUnlocked(sid)) {{
+                File.WriteAllText(statusPath, "ALREADY_UNLOCKED");
+                return 0;
+            }}
+
+            // Wait up to 15s for LogonUI to be active and at least 3s old after early boot
+            for (int w = 0; w < 30; w++) {{
+                if (IsUnlocked(sid)) {{
+                    File.WriteAllText(statusPath, "ALREADY_UNLOCKED");
+                    return 0;
+                }}
+                Process logonProc = GetProcessInSession("LogonUI", sid);
+                if (logonProc != null) {{
+                    try {{
+                        double ageSec = (DateTime.Now - logonProc.StartTime).TotalSeconds;
+                        if (ageSec < 3.0 && ageSec >= 0.0) {{
+                            Thread.Sleep((int)((3.0 - ageSec) * 1000));
+                        }}
+                    }} catch {{}}
+                    break;
+                }}
+                Thread.Sleep(500);
+            }}
+
+            string pin = Encoding.UTF8.GetString(Convert.FromBase64String(PinB64));
+            for (int attempt = 0; attempt < 2; attempt++) {{
+                TypePinOnWinlogon(pin);
+                for (int check = 0; check < 30; check++) {{
+                    Thread.Sleep(250);
+                    if (IsUnlocked(sid)) {{
+                        File.WriteAllText(statusPath, "UNLOCK_SUCCESS");
+                        return 0;
+                    }}
+                }}
+                if (attempt == 0) {{
+                    Thread.Sleep(1500);
+                }}
+            }}
+
+            File.WriteAllText(statusPath, "UNLOCK_TIMEOUT");
+            return 1;
+        }}
+
+        if (args.Length >= 1 && args[0] == "--service") {{
+            uint sessionId = 0xFFFFFFFF;
+            for (int i = 0; i < 20; i++) {{
+                sessionId = WTSGetActiveConsoleSessionId();
+                if (sessionId != 0xFFFFFFFF) break;
+                Thread.Sleep(500);
+            }}
+            if (sessionId == 0xFFFFFFFF) {{
+                File.WriteAllText(statusPath, "ERR_NO_CONSOLE_SESSION");
+                return 2;
+            }}
+
+            IntPtr hToken = IntPtr.Zero;
+            IntPtr hDup = IntPtr.Zero;
+            try {{
+                if (!OpenProcessToken(GetCurrentProcess(), 0x02000000, out hToken)) {{
+                    File.WriteAllText(statusPath, "ERR_OPEN_TOKEN");
+                    return 3;
+                }}
+                if (!DuplicateTokenEx(hToken, 0x02000000, IntPtr.Zero, 2, 1, out hDup)) {{
+                    File.WriteAllText(statusPath, "ERR_DUP_TOKEN");
+                    return 4;
+                }}
+                if (!SetTokenInformation(hDup, 12, ref sessionId, sizeof(uint))) {{
+                    File.WriteAllText(statusPath, "ERR_SET_SESSION");
+                    return 5;
+                }}
+
+                STARTUPINFO si = new STARTUPINFO();
+                si.cb = Marshal.SizeOf(si);
+                si.lpDesktop = "WinSta0\\\\Winlogon";
+                PROCESS_INFORMATION pi;
+                string cmdLine = "\\"" + exePath + "\\" --worker";
+
+                if (!CreateProcessAsUserW(hDup, null, cmdLine, IntPtr.Zero, IntPtr.Zero, false, 0x08000000, IntPtr.Zero, null, ref si, out pi)) {{
+                    File.WriteAllText(statusPath, "ERR_CREATE_PROCESS:" + Marshal.GetLastWin32Error());
+                    return 6;
+                }}
+                WaitForSingleObject(pi.hProcess, 40000);
+                uint exitCode = 0;
+                GetExitCodeProcess(pi.hProcess, out exitCode);
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+                return (int)exitCode;
+            }} finally {{
+                if (hDup != IntPtr.Zero) CloseHandle(hDup);
+                if (hToken != IntPtr.Zero) CloseHandle(hToken);
+            }}
+        }}
+        return 1;
+    }}
+}}
+'@
+
+try {{
+    Add-Type -TypeDefinition $csCode -OutputAssembly $exePath -OutputType ConsoleApplication
+    schtasks.exe /Create /TN $taskName /TR "`"$exePath`" --service" /SC ONCE /ST 00:00 /RU SYSTEM /RL HIGHEST /F | Out-Null
+    schtasks.exe /Run /TN $taskName | Out-Null
+
+    Start-Sleep -Milliseconds 400
+    for ($i = 0; $i -lt 130; $i++) {{
+        if (Test-Path $statusPath) {{ break }}
+        $running = Get-Process -Name "decky_winunlock*" -ErrorAction SilentlyContinue
+        if ($i -gt 6 -and -not $running) {{ break }}
+        Start-Sleep -Milliseconds 300
+    }}
+
+    if (Test-Path $statusPath) {{
+        $res = (Get-Content -Path $statusPath -Raw).Trim()
+        Write-Output $res
+    }} else {{
+        Write-Output "ERR_NO_STATUS"
+    }}
+}} finally {{
+    schtasks.exe /Delete /TN $taskName /F 2>$null | Out-Null
+    Get-Process -Name "decky_winunlock*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Remove-Item -Force $exePath, $statusPath -ErrorAction SilentlyContinue
+}}
+"""
+        encoded = base64.b64encode(ps_script.encode("utf-16le")).decode("ascii")
+        return f"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded}"
+
+    async def _wait_for_tcp_port(
+        self, ip: str, port: int, timeout_total: float = 35.0
+    ) -> bool:
+        """Poll a TCP port until a connection succeeds or timeout_total elapses."""
+        deadline = time.monotonic() + timeout_total
+        while time.monotonic() < deadline:
+            def _probe() -> bool:
+                s = None
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.settimeout(1.5)
+                    return s.connect_ex((ip, port)) == 0
+                except Exception:
+                    return False
+                finally:
+                    if s is not None:
+                        try:
+                            s.close()
+                        except Exception:
+                            pass
+
+            if await asyncio.to_thread(_probe):
+                return True
+            await asyncio.sleep(2.0)
+        return False
+
+    async def _auto_login_after_wol(self, target_id: str) -> None:
+        """
+        Background task started after sending Wake-on-LAN:
+        Polls the target PC up to 120s until it comes online and OpenSSH is reachable,
+        then executes Windows Hello PIN login on the lock screen.
+        """
+        try:
+            if "wol_targets" not in self.settings:
+                self._load_settings()
+            targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
+            target = next((t for t in targets if t.get("id") == target_id), None)
+            if not target:
+                return
+            ip = (target.get("ip") or "").strip()
+            ssh_port = int(target.get("ssh_port") or 22)
+            if not ip:
+                return
+
+            decky.logger.info(
+                f"Auto-login watcher started for '{target.get('name', 'PC')}' ({ip}:{ssh_port})..."
+            )
+            # Wait up to 120s for PC to boot and SSH TCP port to open
+            ssh_ready = await self._wait_for_tcp_port(ip, ssh_port, timeout_total=120.0)
+            if not ssh_ready:
+                decky.logger.warning(
+                    f"Auto-login timed out waiting for SSH on {ip}:{ssh_port} after WoL."
+                )
+                return
+
+            res = await self.login_target(target_id, wait_for_ssh=True)
+            decky.logger.info(
+                f"Auto-login after WoL finished for '{target.get('name', 'PC')}': {res}"
+            )
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            decky.logger.error(f"Error in _auto_login_after_wol for {target_id}: {e}")
+
+    async def login_target(
+        self, target_id: str, wait_for_ssh: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Unlock / log in to the Windows lock screen on the remote PC via SSH using the configured Windows Hello PIN.
+        """
+        if "wol_targets" not in self.settings:
+            self._load_settings()
+        targets: List[Dict[str, Any]] = self.settings.get("wol_targets", [])
+        target = next((t for t in targets if t.get("id") == target_id), None)
+        if not target:
+            return {"success": False, "error": "PC profile not found."}
+
+        ip = (target.get("ip") or "").strip()
+        if not ip:
+            return {"success": False, "error": "PC IP address is required for SSH login."}
+
+        ssh_user = (target.get("ssh_user") or "").strip()
+        if not ssh_user:
+            return {"success": False, "error": "SSH username is required for SSH login."}
+
+        ssh_pin = target.get("ssh_pin") or ""
+        if not ssh_pin:
+            return {"success": False, "error": "Windows Hello PIN is required for auto-login."}
+
+        ssh_password = target.get("ssh_password") or ""
+        ssh_port = int(target.get("ssh_port") or 22)
+
+        lock = self._login_locks.setdefault(target_id, asyncio.Lock())
+        async with lock:
+            # If a recent auto-login just succeeded within the last 12 seconds, reuse its result
+            cached = self._last_login_result.get(target_id)
+            if cached and (time.monotonic() - cached[0]) < 12.0 and cached[1].get("success"):
+                return cached[1]
+
+            if wait_for_ssh:
+                port_ok = await self._wait_for_tcp_port(ip, ssh_port, timeout_total=35.0)
+                if not port_ok:
+                    return {
+                        "success": False,
+                        "error": f"SSH port {ssh_port} on {ip} did not become reachable in time.",
+                    }
+
+            remote_cmd = self._build_windows_pin_unlock_cmd(ssh_pin)
+            decky.logger.info(
+                f"Initiating Windows Hello PIN login via SSH for '{target.get('name', 'PC')}' ({ssh_user}@{ip}:{ssh_port})..."
+            )
+
+            askpass_path: Optional[str] = None
+            extra_env: Dict[str, str] = {}
+            try:
+                ssh_args = [
+                    "ssh",
+                    "-p", str(ssh_port),
+                    "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
+                    "-o", "ConnectTimeout=8",
+                    "-o", "ServerAliveInterval=5",
+                    "-o", "ServerAliveCountMax=3",
+                ]
+
+                if ssh_password:
+                    fd, askpass_path = tempfile.mkstemp(prefix="decky_askpass_", suffix=".sh")
+                    with os.fdopen(fd, "w") as f:
+                        f.write("#!/bin/sh\n")
+                        f.write(f'printf "%s" {json.dumps(ssh_password)}\n')
+                    os.chmod(askpass_path, 0o700)
+                    extra_env["SSH_ASKPASS"] = askpass_path
+                    extra_env["SSH_ASKPASS_REQUIRE"] = "force"
+                    extra_env["DISPLAY"] = ":0"
+                    ssh_args.extend(
+                        ["-o", "PreferredAuthentications=password,keyboard-interactive,publickey"]
+                    )
+                else:
+                    ssh_args.extend(["-o", "BatchMode=yes"])
+
+                ssh_args.extend([f"{ssh_user}@{ip}", remote_cmd])
+
+                rc, stdout, stderr = 1, "", ""
+                for attempt in range(3):
+                    rc, stdout, stderr = await self._run_cmd(
+                        ssh_args, timeout=55.0, extra_env=extra_env
+                    )
+                    combined_lower = (stderr + " " + stdout).lower()
+                    if rc == 0 or "unlock_success" in combined_lower or "already_unlocked" in combined_lower:
+                        break
+                    if attempt < 2 and any(
+                        kw in combined_lower
+                        for kw in ("connection refused", "connection reset", "timed out", "closed by remote host")
+                    ):
+                        await asyncio.sleep(2.5)
+                        continue
+                    break
+
+                combined_out = f"{stdout}\n{stderr}".strip()
+                combined_lower = combined_out.lower()
+
+                if "already_unlocked" in combined_lower:
+                    res = {"success": True, "already_unlocked": True}
+                    self._last_login_result[target_id] = (time.monotonic(), res)
+                    decky.logger.info(f"Windows session on {ip} is already unlocked.")
+                    return res
+
+                if "unlock_success" in combined_lower:
+                    res = {"success": True, "already_unlocked": False}
+                    self._last_login_result[target_id] = (time.monotonic(), res)
+                    decky.logger.info(f"Windows Hello PIN login succeeded on {ip}.")
+                    return res
+
+                if "permission denied" in combined_lower or "authentication failed" in combined_lower:
+                    return {
+                        "success": False,
+                        "error": "SSH authentication failed. Please check your SSH username and password.",
+                    }
+
+                if "unlock_timeout" in combined_lower:
+                    return {
+                        "success": False,
+                        "error": "Windows lock screen did not unlock after entering PIN. Please verify your Windows Hello PIN.",
+                    }
+
+                decky.logger.warning(
+                    f"SSH Windows login returned rc={rc}, output={combined_out}"
+                )
+                return {
+                    "success": False,
+                    "error": stderr or stdout or f"SSH login exited with code {rc}",
+                }
+            except Exception as e:
+                decky.logger.error(f"SSH Windows login exception: {e}")
+                return {"success": False, "error": str(e)}
+            finally:
+                if askpass_path and os.path.exists(askpass_path):
+                    try:
+                        os.remove(askpass_path)
+                    except Exception:
+                        pass
 
     async def shutdown_target(self, target_id: str) -> Dict[str, Any]:
         """Send a shutdown command to the remote PC via SSH."""

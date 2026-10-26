@@ -2,6 +2,7 @@ import { callable } from "@decky/api";
 import {
   DeleteTargetResponse,
   InitialStateResponse,
+  LoginTargetResponse,
   PingStatus,
   SaveTargetResponse,
   SendWolResponse,
@@ -40,4 +41,8 @@ export const sendWol = callable<
 
 export const shutdownTarget = callable<[target_id: string], ShutdownTargetResponse>(
   "shutdown_target"
+);
+
+export const loginTarget = callable<[target_id: string], LoginTargetResponse>(
+  "login_target"
 );

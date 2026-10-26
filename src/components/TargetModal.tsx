@@ -62,6 +62,12 @@ export const TargetModal: FC<TargetModalProps> = ({
   const [sshOs, setSshOs] = useState<string>(
     existingTarget?.ssh_os ?? "windows"
   );
+  const [sshAutoLogin, setSshAutoLogin] = useState<boolean>(
+    existingTarget?.ssh_auto_login ?? false
+  );
+  const [sshPin, setSshPin] = useState<string>(
+    existingTarget?.ssh_pin ?? ""
+  );
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -77,6 +83,10 @@ export const TargetModal: FC<TargetModalProps> = ({
     setErrorMsg("");
     if (!mac.trim()) {
       setErrorMsg(t.errMacRequired);
+      return;
+    }
+    if (sshEnabled && sshOs === "windows" && sshAutoLogin && !sshPin.trim()) {
+      setErrorMsg(t.errPinRequired);
       return;
     }
     setSaving(true);
@@ -98,6 +108,8 @@ export const TargetModal: FC<TargetModalProps> = ({
         ssh_password: sshPassword,
         ssh_port: parseInt(sshPort, 10) || 22,
         ssh_os: (sshOs as "windows" | "linux") || "windows",
+        ssh_auto_login: sshOs === "windows" ? sshAutoLogin : false,
+        ssh_pin: sshPin,
       });
       if (res.success) {
         closeModal?.();
@@ -261,6 +273,27 @@ export const TargetModal: FC<TargetModalProps> = ({
               onChange={(e) => setSshPort(e.target.value)}
               description={t.fieldSshPortDesc}
             />
+
+            {sshOs === "windows" && (
+              <>
+                <ToggleField
+                  label={t.fieldSshAutoLoginLabel}
+                  description={t.fieldSshAutoLoginDesc}
+                  checked={sshAutoLogin}
+                  onChange={(val) => setSshAutoLogin(val)}
+                />
+
+                {sshAutoLogin && (
+                  <TextField
+                    label={t.fieldSshPinLabel}
+                    value={sshPin}
+                    bIsPassword={true}
+                    onChange={(e) => setSshPin(e.target.value)}
+                    description={t.fieldSshPinDesc}
+                  />
+                )}
+              </>
+            )}
           </>
         )}
 

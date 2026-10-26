@@ -30,6 +30,8 @@ export interface WolTarget {
   ssh_port?: number;
   ssh_os?: "windows" | "linux";
   ssh_custom_cmd?: string;
+  ssh_auto_login?: boolean;
+  ssh_pin?: string;
 }
 
 export interface PingStatus {
@@ -67,6 +69,13 @@ export interface SendWolResponse {
 
 export interface ShutdownTargetResponse {
   success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface LoginTargetResponse {
+  success: boolean;
+  already_unlocked?: boolean;
   message?: string;
   error?: string;
 }

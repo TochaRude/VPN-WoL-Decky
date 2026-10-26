@@ -107,6 +107,19 @@ const translations = {
     fieldSshPortDesc: "Default is 22",
     fieldSshOsLabel: "PC Operating System",
     fieldSshOsDesc: "Windows sends 'shutdown /s /t 0', Linux sends 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Auto-Login after WoL (Windows PIN)",
+    fieldSshAutoLoginDesc:
+      "Automatically signs in on the Windows lock screen using your PIN after Wake-on-LAN (ideal for Steam Remote Play)",
+    fieldSshPinLabel: "Windows Hello PIN",
+    fieldSshPinDesc: "Sent via SSH to unlock the Windows sign-in screen after waking up",
+    errPinRequired: "Please enter your Windows Hello PIN for Auto-Login.",
+    btnLoginPc: "🔓 Login (PIN)",
+    btnLoggingIn: "Logging in...",
+    toastLoginSuccessTitle: "Windows Login Successful",
+    toastLoginSuccessBody: "{name} unlocked via Windows Hello PIN.",
+    toastLoginAlreadyTitle: "{name} Unlocked",
+    toastLoginAlreadyBody: "Windows session is already logged in.",
+    toastLoginFailedTitle: "Windows Login Failed",
     toastShutdownSentTitle: "Shutdown Command Sent",
     toastShutdownSentBody: "Shutdown signal sent to {name}.",
     toastShutdownFailedTitle: "Shutdown Failed",
@@ -189,6 +202,20 @@ const translations = {
     fieldSshPortDesc: "Standard ist 22",
     fieldSshOsLabel: "Betriebssystem des PCs",
     fieldSshOsDesc: "Windows sendet 'shutdown /s /t 0', Linux sendet 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Auto-Login nach WoL (Windows PIN)",
+    fieldSshAutoLoginDesc:
+      "Meldet den Windows-Benutzer nach Wake-on-LAN automatisch per PIN am Sperrbildschirm an (ideal für Steam Remote Play)",
+    fieldSshPinLabel: "Windows Hello PIN",
+    fieldSshPinDesc:
+      "Wird nach dem Aufwecken per SSH an den Windows-Anmeldebildschirm gesendet",
+    errPinRequired: "Bitte gib deine Windows Hello PIN für den Auto-Login ein.",
+    btnLoginPc: "🔓 Anmelden (PIN)",
+    btnLoggingIn: "Melde an...",
+    toastLoginSuccessTitle: "Windows-Login erfolgreich",
+    toastLoginSuccessBody: "{name} wurde per Windows Hello PIN entsperrt.",
+    toastLoginAlreadyTitle: "{name} bereits entsperrt",
+    toastLoginAlreadyBody: "Der Windows-Benutzer ist bereits angemeldet.",
+    toastLoginFailedTitle: "Windows-Login fehlgeschlagen",
     toastShutdownSentTitle: "Herunterfahren gesendet",
     toastShutdownSentBody: "Herunterfahren-Signal an {name} übermittelt.",
     toastShutdownFailedTitle: "Herunterfahren fehlgeschlagen",
@@ -268,6 +295,19 @@ const translations = {
     fieldSshPortDesc: "Par défaut 22",
     fieldSshOsLabel: "Système d'exploitation du PC",
     fieldSshOsDesc: "Windows envoie 'shutdown /s /t 0', Linux envoie 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Connexion auto après WoL (PIN Windows)",
+    fieldSshAutoLoginDesc:
+      "Connecte automatiquement la session Windows avec votre PIN après le réveil (idéal pour Steam Remote Play)",
+    fieldSshPinLabel: "Code PIN Windows Hello",
+    fieldSshPinDesc: "Envoyé via SSH pour déverrouiller l'écran de connexion Windows",
+    errPinRequired: "Veuillez saisir votre code PIN Windows Hello.",
+    btnLoginPc: "🔓 Connexion (PIN)",
+    btnLoggingIn: "Connexion...",
+    toastLoginSuccessTitle: "Connexion Windows réussie",
+    toastLoginSuccessBody: "{name} déverrouillé avec le code PIN.",
+    toastLoginAlreadyTitle: "{name} déjà déverrouillé",
+    toastLoginAlreadyBody: "La session Windows est déjà ouverte.",
+    toastLoginFailedTitle: "Échec de connexion Windows",
     toastShutdownSentTitle: "Commande d'arrêt envoyée",
     toastShutdownSentBody: "Signal d'arrêt envoyé à {name}.",
     toastShutdownFailedTitle: "Échec de l'arrêt",
@@ -348,6 +388,19 @@ const translations = {
     fieldSshPortDesc: "Por defecto 22",
     fieldSshOsLabel: "Sistema operativo del PC",
     fieldSshOsDesc: "Windows envía 'shutdown /s /t 0', Linux envía 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Inicio de sesión automático tras WoL (PIN Windows)",
+    fieldSshAutoLoginDesc:
+      "Inicia sesión automáticamente en Windows con tu PIN tras encender por WoL (ideal para Steam Remote Play)",
+    fieldSshPinLabel: "PIN de Windows Hello",
+    fieldSshPinDesc: "Se envía por SSH para desbloquear la pantalla de inicio de sesión",
+    errPinRequired: "Introduce tu PIN de Windows Hello para el inicio automático.",
+    btnLoginPc: "🔓 Iniciar sesión (PIN)",
+    btnLoggingIn: "Iniciando sesión...",
+    toastLoginSuccessTitle: "Sesión iniciada en Windows",
+    toastLoginSuccessBody: "{name} desbloqueado mediante PIN.",
+    toastLoginAlreadyTitle: "{name} desbloqueado",
+    toastLoginAlreadyBody: "La sesión de Windows ya está activa.",
+    toastLoginFailedTitle: "Error de inicio de sesión",
     toastShutdownSentTitle: "Comando de apagado enviado",
     toastShutdownSentBody: "Señal de apagado enviada a {name}.",
     toastShutdownFailedTitle: "Fallo al apagar",
@@ -427,6 +480,19 @@ const translations = {
     fieldSshPortDesc: "Predefinita 22",
     fieldSshOsLabel: "Sistema operativo del PC",
     fieldSshOsDesc: "Windows invia 'shutdown /s /t 0', Linux invia 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Accesso automatico dopo WoL (PIN Windows)",
+    fieldSshAutoLoginDesc:
+      "Accede automaticamente a Windows con il PIN dopo il risveglio WoL (ideale per Steam Remote Play)",
+    fieldSshPinLabel: "PIN Windows Hello",
+    fieldSshPinDesc: "Inviato via SSH per sbloccare la schermata di accesso di Windows",
+    errPinRequired: "Inserisci il PIN Windows Hello per l'accesso automatico.",
+    btnLoginPc: "🔓 Accedi (PIN)",
+    btnLoggingIn: "Accesso...",
+    toastLoginSuccessTitle: "Accesso Windows riuscito",
+    toastLoginSuccessBody: "{name} sbloccato tramite PIN.",
+    toastLoginAlreadyTitle: "{name} già sbloccato",
+    toastLoginAlreadyBody: "La sessione Windows è già attiva.",
+    toastLoginFailedTitle: "Accesso Windows fallito",
     toastShutdownSentTitle: "Comando di spegnimento inviato",
     toastShutdownSentBody: "Segnale di spegnimento inviato a {name}.",
     toastShutdownFailedTitle: "Spegnimento non riuscito",
@@ -506,6 +572,19 @@ const translations = {
     fieldSshPortDesc: "Padrão é 22",
     fieldSshOsLabel: "Sistema operacional do PC",
     fieldSshOsDesc: "Windows envia 'shutdown /s /t 0', Linux envia 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Login automático após WoL (PIN do Windows)",
+    fieldSshAutoLoginDesc:
+      "Faz login automaticamente no Windows usando seu PIN após Wake-on-LAN (ideal para Steam Remote Play)",
+    fieldSshPinLabel: "PIN do Windows Hello",
+    fieldSshPinDesc: "Enviado via SSH para desbloquear a tela de login do Windows",
+    errPinRequired: "Insira seu PIN do Windows Hello para o login automático.",
+    btnLoginPc: "🔓 Entrar (PIN)",
+    btnLoggingIn: "Entrando...",
+    toastLoginSuccessTitle: "Login no Windows concluído",
+    toastLoginSuccessBody: "{name} desbloqueado via PIN.",
+    toastLoginAlreadyTitle: "{name} desbloqueado",
+    toastLoginAlreadyBody: "A sessão do Windows já está ativa.",
+    toastLoginFailedTitle: "Falha no login do Windows",
     toastShutdownSentTitle: "Comando de desligamento enviado",
     toastShutdownSentBody: "Sinal de desligamento enviado para {name}.",
     toastShutdownFailedTitle: "Falha ao desligar",
@@ -585,6 +664,19 @@ const translations = {
     fieldSshPortDesc: "Domyślnie 22",
     fieldSshOsLabel: "System operacyjny komputera",
     fieldSshOsDesc: "Windows wysyła 'shutdown /s /t 0', Linux wysyła 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Auto-logowanie po WoL (PIN Windows)",
+    fieldSshAutoLoginDesc:
+      "Automatycznie loguje użytkownika Windows kodem PIN po wybudzeniu (idealne dla Steam Remote Play)",
+    fieldSshPinLabel: "Kod PIN Windows Hello",
+    fieldSshPinDesc: "Wysyłany przez SSH w celu odblokowania ekranu logowania Windows",
+    errPinRequired: "Podaj kod PIN Windows Hello dla automatycznego logowania.",
+    btnLoginPc: "🔓 Zaloguj (PIN)",
+    btnLoggingIn: "Logowanie...",
+    toastLoginSuccessTitle: "Zalogowano do Windows",
+    toastLoginSuccessBody: "Odblokowano {name} za pomocą kodu PIN.",
+    toastLoginAlreadyTitle: "{name} odblokowany",
+    toastLoginAlreadyBody: "Sesja Windows jest już zalogowana.",
+    toastLoginFailedTitle: "Błąd logowania Windows",
     toastShutdownSentTitle: "Wysłano polecenie wyłączenia",
     toastShutdownSentBody: "Sygnał wyłączenia wysłany do {name}.",
     toastShutdownFailedTitle: "Błąd wyłączania",
@@ -664,6 +756,19 @@ const translations = {
     fieldSshPortDesc: "По умолчанию 22",
     fieldSshOsLabel: "Операционная система ПК",
     fieldSshOsDesc: "Windows отправляет 'shutdown /s /t 0', Linux отправляет 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Автовход после WoL (PIN-код Windows)",
+    fieldSshAutoLoginDesc:
+      "Автоматически входит в Windows с помощью PIN-кода после пробуждения (идеально для Steam Remote Play)",
+    fieldSshPinLabel: "PIN-код Windows Hello",
+    fieldSshPinDesc: "Отправляется по SSH для разблокировки экрана входа Windows",
+    errPinRequired: "Введите PIN-код Windows Hello для автоматического входа.",
+    btnLoginPc: "🔓 Войти (PIN)",
+    btnLoggingIn: "Вход...",
+    toastLoginSuccessTitle: "Вход в Windows выполнен",
+    toastLoginSuccessBody: "{name} разблокирован с помощью PIN-кода.",
+    toastLoginAlreadyTitle: "{name} уже разблокирован",
+    toastLoginAlreadyBody: "Сеанс Windows уже активен.",
+    toastLoginFailedTitle: "Ошибка входа в Windows",
     toastShutdownSentTitle: "Команда выключения отправлена",
     toastShutdownSentBody: "Сигнал выключения отправлен на {name}.",
     toastShutdownFailedTitle: "Ошибка выключения",
@@ -745,6 +850,7 @@ const deleteWolTarget = callable("delete_wol_target");
 const pingTarget = callable("ping_target");
 const sendWol = callable("send_wol");
 const shutdownTarget = callable("shutdown_target");
+const loginTarget = callable("login_target");
 
 const ConfirmShutdownModal = ({ closeModal, targetName, onConfirm }) => {
   const t = SP_REACT.useMemo(() => getTranslations(), []);
@@ -835,6 +941,12 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
   const [sshOs, setSshOs] = SP_REACT.useState(
     existingTarget?.ssh_os ?? "windows"
   );
+  const [sshAutoLogin, setSshAutoLogin] = SP_REACT.useState(
+    existingTarget?.ssh_auto_login ?? false
+  );
+  const [sshPin, setSshPin] = SP_REACT.useState(
+    existingTarget?.ssh_pin ?? ""
+  );
   const [errorMsg, setErrorMsg] = SP_REACT.useState("");
   const [saving, setSaving] = SP_REACT.useState(false);
 
@@ -850,6 +962,10 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
     setErrorMsg("");
     if (!mac.trim()) {
       setErrorMsg(t.errMacRequired);
+      return;
+    }
+    if (sshEnabled && sshOs === "windows" && sshAutoLogin && !sshPin.trim()) {
+      setErrorMsg(t.errPinRequired);
       return;
     }
     setSaving(true);
@@ -871,6 +987,8 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
         ssh_password: sshPassword,
         ssh_port: parseInt(sshPort, 10) || 22,
         ssh_os: sshOs || "windows",
+        ssh_auto_login: sshOs === "windows" ? sshAutoLogin : false,
+        ssh_pin: sshPin,
       });
       if (res.success) {
         closeModal?.();
@@ -1022,6 +1140,27 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
                   onChange: (e) => setSshPort(e.target.value),
                   description: t.fieldSshPortDesc,
                 }),
+                sshOs === "windows"
+                  ? SP_JSX.jsxs(SP_REACT.Fragment, {
+                      children: [
+                        SP_JSX.jsx(DFL.ToggleField, {
+                          label: t.fieldSshAutoLoginLabel,
+                          description: t.fieldSshAutoLoginDesc,
+                          checked: sshAutoLogin,
+                          onChange: (val) => setSshAutoLogin(val),
+                        }),
+                        sshAutoLogin
+                          ? SP_JSX.jsx(DFL.TextField, {
+                              label: t.fieldSshPinLabel,
+                              value: sshPin,
+                              bIsPassword: true,
+                              onChange: (e) => setSshPin(e.target.value),
+                              description: t.fieldSshPinDesc,
+                            })
+                          : null,
+                      ],
+                    })
+                  : null,
               ],
             })
           : null,
@@ -1097,6 +1236,7 @@ const Content = () => {
   const [loading, setLoading] = SP_REACT.useState(true);
   const [switchingVpnId, setSwitchingVpnId] = SP_REACT.useState(null);
   const [wakingTargetIds, setWakingTargetIds] = SP_REACT.useState({});
+  const [loggingInTargetIds, setLoggingInTargetIds] = SP_REACT.useState({});
   const [shuttingDownTargetIds, setShuttingDownTargetIds] = SP_REACT.useState({});
 
   const mountedRef = SP_REACT.useRef(true);
@@ -1172,13 +1312,52 @@ const Content = () => {
     }
   };
 
+  const handleLoginTarget = SP_REACT.useCallback(
+    async (target, silentAlreadyUnlocked = false) => {
+      setLoggingInTargetIds((prev) => ({ ...prev, [target.id]: true }));
+      try {
+        const res = await loginTarget(target.id);
+        if (res.success) {
+          if (res.already_unlocked) {
+            if (!silentAlreadyUnlocked) {
+              toaster.toast({
+                title: formatString(t.toastLoginAlreadyTitle, { name: target.name }),
+                body: t.toastLoginAlreadyBody,
+              });
+            }
+          } else {
+            toaster.toast({
+              title: t.toastLoginSuccessTitle,
+              body: formatString(t.toastLoginSuccessBody, { name: target.name }),
+            });
+          }
+        } else {
+          toaster.toast({
+            title: t.toastLoginFailedTitle,
+            body: res.error || "Error",
+          });
+        }
+      } catch (e) {
+        toaster.toast({
+          title: t.toastLoginFailedTitle,
+          body: String(e?.message || e),
+        });
+      } finally {
+        if (mountedRef.current) {
+          setLoggingInTargetIds((prev) => ({ ...prev, [target.id]: false }));
+        }
+      }
+    },
+    [t]
+  );
+
   const watchHostWakeup = SP_REACT.useCallback(
     async (target) => {
       if (!target.ip) {
         setWakingTargetIds((prev) => ({ ...prev, [target.id]: false }));
         return;
       }
-      for (let attempt = 0; attempt < 20; attempt++) {
+      for (let attempt = 0; attempt < 30; attempt++) {
         await new Promise((r) => setTimeout(r, 3000));
         if (!mountedRef.current) return;
         try {
@@ -1193,6 +1372,14 @@ const Content = () => {
                 p.latency_ms !== null ? ` (${p.latency_ms} ms)` : ""
               }`,
             });
+            if (
+              target.ssh_enabled &&
+              target.ssh_auto_login &&
+              target.ssh_pin &&
+              (target.ssh_os ?? "windows") === "windows"
+            ) {
+              handleLoginTarget(target, true);
+            }
             return;
           }
         } catch {
@@ -1203,7 +1390,7 @@ const Content = () => {
         setWakingTargetIds((prev) => ({ ...prev, [target.id]: false }));
       }
     },
-    [t]
+    [t, handleLoginTarget]
   );
 
   const handleWakeTarget = async (target) => {
@@ -1548,21 +1735,57 @@ const Content = () => {
                               ],
                             }),
                             target.ssh_enabled && isOnline
-                              ? SP_JSX.jsx(DFL.DialogButton, {
+                              ? SP_JSX.jsxs(DFL.Focusable, {
                                   style: {
+                                    display: "flex",
+                                    flexDirection: "row",
+                                    gap: "6px",
                                     width: "100%",
-                                    padding: "8px 10px",
-                                    fontSize: "13px",
-                                    fontWeight: 600,
-                                    backgroundColor: "rgba(220, 53, 69, 0.4)",
-                                    color: "#ff9ea5",
-                                    border: "1px solid rgba(220, 53, 69, 0.6)",
                                   },
-                                  disabled: Boolean(shuttingDownTargetIds[target.id]),
-                                  onClick: () => handleShutdownTarget(target),
-                                  children: shuttingDownTargetIds[target.id]
-                                    ? t.btnShuttingDown
-                                    : t.btnShutdownPc,
+                                  children: [
+                                    target.ssh_auto_login &&
+                                    target.ssh_pin &&
+                                    (target.ssh_os ?? "windows") === "windows"
+                                      ? SP_JSX.jsx(DFL.DialogButton, {
+                                          style: {
+                                            flex: "1",
+                                            padding: "8px 10px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            backgroundColor: "rgba(46, 204, 113, 0.28)",
+                                            color: "#7bed9f",
+                                            border: "1px solid rgba(46, 204, 113, 0.5)",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                          },
+                                          disabled: Boolean(loggingInTargetIds[target.id]),
+                                          onClick: () => handleLoginTarget(target, false),
+                                          children: loggingInTargetIds[target.id]
+                                            ? t.btnLoggingIn
+                                            : t.btnLoginPc,
+                                        })
+                                      : null,
+                                    SP_JSX.jsx(DFL.DialogButton, {
+                                      style: {
+                                        flex: "1",
+                                        padding: "8px 10px",
+                                        fontSize: "13px",
+                                        fontWeight: 600,
+                                        backgroundColor: "rgba(220, 53, 69, 0.4)",
+                                        color: "#ff9ea5",
+                                        border: "1px solid rgba(220, 53, 69, 0.6)",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                      },
+                                      disabled: Boolean(shuttingDownTargetIds[target.id]),
+                                      onClick: () => handleShutdownTarget(target),
+                                      children: shuttingDownTargetIds[target.id]
+                                        ? t.btnShuttingDown
+                                        : t.btnShutdownPc,
+                                    }),
+                                  ],
                                 })
                               : null,
                           ],

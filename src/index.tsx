@@ -14,6 +14,7 @@ import { definePlugin, toaster, useQuickAccessVisible } from "@decky/api";
 import {
   deleteWolTarget,
   getInitialState,
+  loginTarget,
   pingTarget,
   saveWolTarget,
   sendWol,
@@ -104,6 +105,7 @@ const Content: FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [switchingVpnId, setSwitchingVpnId] = useState<string | null>(null);
   const [wakingTargetIds, setWakingTargetIds] = useState<Record<string, boolean>>({});
+  const [loggingInTargetIds, setLoggingInTargetIds] = useState<Record<string, boolean>>({});
   const [shuttingDownTargetIds, setShuttingDownTargetIds] = useState<Record<string, boolean>>({});
 
   const mountedRef = useRef<boolean>(true);
@@ -180,13 +182,52 @@ const Content: FC = () => {
     }
   };
 
+  const handleLoginTarget = useCallback(
+    async (target: WolTarget, silentAlreadyUnlocked = false) => {
+      setLoggingInTargetIds((prev) => ({ ...prev, [target.id]: true }));
+      try {
+        const res = await loginTarget(target.id);
+        if (res.success) {
+          if (res.already_unlocked) {
+            if (!silentAlreadyUnlocked) {
+              toaster.toast({
+                title: formatString(t.toastLoginAlreadyTitle, { name: target.name }),
+                body: t.toastLoginAlreadyBody,
+              });
+            }
+          } else {
+            toaster.toast({
+              title: t.toastLoginSuccessTitle,
+              body: formatString(t.toastLoginSuccessBody, { name: target.name }),
+            });
+          }
+        } else {
+          toaster.toast({
+            title: t.toastLoginFailedTitle,
+            body: res.error || "Error",
+          });
+        }
+      } catch (e: any) {
+        toaster.toast({
+          title: t.toastLoginFailedTitle,
+          body: String(e?.message || e),
+        });
+      } finally {
+        if (mountedRef.current) {
+          setLoggingInTargetIds((prev) => ({ ...prev, [target.id]: false }));
+        }
+      }
+    },
+    [t]
+  );
+
   const watchHostWakeup = useCallback(
     async (target: WolTarget) => {
       if (!target.ip) {
         setWakingTargetIds((prev) => ({ ...prev, [target.id]: false }));
         return;
       }
-      for (let attempt = 0; attempt < 20; attempt++) {
+      for (let attempt = 0; attempt < 30; attempt++) {
         await new Promise((r) => setTimeout(r, 3000));
         if (!mountedRef.current) return;
         try {
@@ -201,6 +242,14 @@ const Content: FC = () => {
                 p.latency_ms !== null ? ` (${p.latency_ms} ms)` : ""
               }`,
             });
+            if (
+              target.ssh_enabled &&
+              target.ssh_auto_login &&
+              target.ssh_pin &&
+              (target.ssh_os ?? "windows") === "windows"
+            ) {
+              handleLoginTarget(target, true);
+            }
             return;
           }
         } catch {
@@ -211,7 +260,7 @@ const Content: FC = () => {
         setWakingTargetIds((prev) => ({ ...prev, [target.id]: false }));
       }
     },
-    [t]
+    [t, handleLoginTarget]
   );
 
   const handleWakeTarget = async (target: WolTarget) => {
@@ -525,21 +574,56 @@ const Content: FC = () => {
                     </Focusable>
 
                     {target.ssh_enabled && isOnline && (
-                      <DialogButton
+                      <Focusable
                         style={{
+                          display: "flex",
+                          flexDirection: "row",
+                          gap: "6px",
                           width: "100%",
-                          padding: "8px 10px",
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          backgroundColor: "rgba(220, 53, 69, 0.4)",
-                          color: "#ff9ea5",
-                          border: "1px solid rgba(220, 53, 69, 0.6)",
                         }}
-                        disabled={Boolean(shuttingDownTargetIds[target.id])}
-                        onClick={() => handleShutdownTarget(target)}
                       >
-                        {shuttingDownTargetIds[target.id] ? t.btnShuttingDown : t.btnShutdownPc}
-                      </DialogButton>
+                        {target.ssh_auto_login &&
+                          target.ssh_pin &&
+                          (target.ssh_os ?? "windows") === "windows" && (
+                            <DialogButton
+                              style={{
+                                flex: "1",
+                                padding: "8px 10px",
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                backgroundColor: "rgba(46, 204, 113, 0.28)",
+                                color: "#7bed9f",
+                                border: "1px solid rgba(46, 204, 113, 0.5)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              disabled={Boolean(loggingInTargetIds[target.id])}
+                              onClick={() => handleLoginTarget(target, false)}
+                            >
+                              {loggingInTargetIds[target.id] ? t.btnLoggingIn : t.btnLoginPc}
+                            </DialogButton>
+                          )}
+
+                        <DialogButton
+                          style={{
+                            flex: "1",
+                            padding: "8px 10px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            backgroundColor: "rgba(220, 53, 69, 0.4)",
+                            color: "#ff9ea5",
+                            border: "1px solid rgba(220, 53, 69, 0.6)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                          disabled={Boolean(shuttingDownTargetIds[target.id])}
+                          onClick={() => handleShutdownTarget(target)}
+                        >
+                          {shuttingDownTargetIds[target.id] ? t.btnShuttingDown : t.btnShutdownPc}
+                        </DialogButton>
+                      </Focusable>
                     )}
                   </div>
                 </div>

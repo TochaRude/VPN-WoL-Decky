@@ -64,6 +64,18 @@ export interface Translations {
   fieldSshPortDesc: string;
   fieldSshOsLabel: string;
   fieldSshOsDesc: string;
+  fieldSshAutoLoginLabel: string;
+  fieldSshAutoLoginDesc: string;
+  fieldSshPinLabel: string;
+  fieldSshPinDesc: string;
+  errPinRequired: string;
+  btnLoginPc: string;
+  btnLoggingIn: string;
+  toastLoginSuccessTitle: string;
+  toastLoginSuccessBody: string;
+  toastLoginAlreadyTitle: string;
+  toastLoginAlreadyBody: string;
+  toastLoginFailedTitle: string;
   toastShutdownSentTitle: string;
   toastShutdownSentBody: string;
   toastShutdownFailedTitle: string;
@@ -145,6 +157,19 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshPortDesc: "Default is 22",
     fieldSshOsLabel: "PC Operating System",
     fieldSshOsDesc: "Windows sends 'shutdown /s /t 0', Linux sends 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Auto-Login after WoL (Windows PIN)",
+    fieldSshAutoLoginDesc:
+      "Automatically signs in on the Windows lock screen using your PIN after Wake-on-LAN (ideal for Steam Remote Play)",
+    fieldSshPinLabel: "Windows Hello PIN",
+    fieldSshPinDesc: "Sent via SSH to unlock the Windows sign-in screen after waking up",
+    errPinRequired: "Please enter your Windows Hello PIN for Auto-Login.",
+    btnLoginPc: "🔓 Login (PIN)",
+    btnLoggingIn: "Logging in...",
+    toastLoginSuccessTitle: "Windows Login Successful",
+    toastLoginSuccessBody: "{name} unlocked via Windows Hello PIN.",
+    toastLoginAlreadyTitle: "{name} Unlocked",
+    toastLoginAlreadyBody: "Windows session is already logged in.",
+    toastLoginFailedTitle: "Windows Login Failed",
     toastShutdownSentTitle: "Shutdown Command Sent",
     toastShutdownSentBody: "Shutdown signal sent to {name}.",
     toastShutdownFailedTitle: "Shutdown Failed",
@@ -227,6 +252,20 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshPortDesc: "Standard ist 22",
     fieldSshOsLabel: "Betriebssystem des PCs",
     fieldSshOsDesc: "Windows sendet 'shutdown /s /t 0', Linux sendet 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Auto-Login nach WoL (Windows PIN)",
+    fieldSshAutoLoginDesc:
+      "Meldet den Windows-Benutzer nach Wake-on-LAN automatisch per PIN am Sperrbildschirm an (ideal für Steam Remote Play)",
+    fieldSshPinLabel: "Windows Hello PIN",
+    fieldSshPinDesc:
+      "Wird nach dem Aufwecken per SSH an den Windows-Anmeldebildschirm gesendet",
+    errPinRequired: "Bitte gib deine Windows Hello PIN für den Auto-Login ein.",
+    btnLoginPc: "🔓 Anmelden (PIN)",
+    btnLoggingIn: "Melde an...",
+    toastLoginSuccessTitle: "Windows-Login erfolgreich",
+    toastLoginSuccessBody: "{name} wurde per Windows Hello PIN entsperrt.",
+    toastLoginAlreadyTitle: "{name} bereits entsperrt",
+    toastLoginAlreadyBody: "Der Windows-Benutzer ist bereits angemeldet.",
+    toastLoginFailedTitle: "Windows-Login fehlgeschlagen",
     toastShutdownSentTitle: "Herunterfahren gesendet",
     toastShutdownSentBody: "Herunterfahren-Signal an {name} übermittelt.",
     toastShutdownFailedTitle: "Herunterfahren fehlgeschlagen",
@@ -306,6 +345,19 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshPortDesc: "Par défaut 22",
     fieldSshOsLabel: "Système d'exploitation du PC",
     fieldSshOsDesc: "Windows envoie 'shutdown /s /t 0', Linux envoie 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Connexion auto après WoL (PIN Windows)",
+    fieldSshAutoLoginDesc:
+      "Connecte automatiquement la session Windows avec votre PIN après le réveil (idéal pour Steam Remote Play)",
+    fieldSshPinLabel: "Code PIN Windows Hello",
+    fieldSshPinDesc: "Envoyé via SSH pour déverrouiller l'écran de connexion Windows",
+    errPinRequired: "Veuillez saisir votre code PIN Windows Hello.",
+    btnLoginPc: "🔓 Connexion (PIN)",
+    btnLoggingIn: "Connexion...",
+    toastLoginSuccessTitle: "Connexion Windows réussie",
+    toastLoginSuccessBody: "{name} déverrouillé avec le code PIN.",
+    toastLoginAlreadyTitle: "{name} déjà déverrouillé",
+    toastLoginAlreadyBody: "La session Windows est déjà ouverte.",
+    toastLoginFailedTitle: "Échec de connexion Windows",
     toastShutdownSentTitle: "Commande d'arrêt envoyée",
     toastShutdownSentBody: "Signal d'arrêt envoyé à {name}.",
     toastShutdownFailedTitle: "Échec de l'arrêt",
@@ -386,6 +438,19 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshPortDesc: "Por defecto 22",
     fieldSshOsLabel: "Sistema operativo del PC",
     fieldSshOsDesc: "Windows envía 'shutdown /s /t 0', Linux envía 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Inicio de sesión automático tras WoL (PIN Windows)",
+    fieldSshAutoLoginDesc:
+      "Inicia sesión automáticamente en Windows con tu PIN tras encender por WoL (ideal para Steam Remote Play)",
+    fieldSshPinLabel: "PIN de Windows Hello",
+    fieldSshPinDesc: "Se envía por SSH para desbloquear la pantalla de inicio de sesión",
+    errPinRequired: "Introduce tu PIN de Windows Hello para el inicio automático.",
+    btnLoginPc: "🔓 Iniciar sesión (PIN)",
+    btnLoggingIn: "Iniciando sesión...",
+    toastLoginSuccessTitle: "Sesión iniciada en Windows",
+    toastLoginSuccessBody: "{name} desbloqueado mediante PIN.",
+    toastLoginAlreadyTitle: "{name} desbloqueado",
+    toastLoginAlreadyBody: "La sesión de Windows ya está activa.",
+    toastLoginFailedTitle: "Error de inicio de sesión",
     toastShutdownSentTitle: "Comando de apagado enviado",
     toastShutdownSentBody: "Señal de apagado enviada a {name}.",
     toastShutdownFailedTitle: "Fallo al apagar",
@@ -465,6 +530,19 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshPortDesc: "Predefinita 22",
     fieldSshOsLabel: "Sistema operativo del PC",
     fieldSshOsDesc: "Windows invia 'shutdown /s /t 0', Linux invia 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Accesso automatico dopo WoL (PIN Windows)",
+    fieldSshAutoLoginDesc:
+      "Accede automaticamente a Windows con il PIN dopo il risveglio WoL (ideale per Steam Remote Play)",
+    fieldSshPinLabel: "PIN Windows Hello",
+    fieldSshPinDesc: "Inviato via SSH per sbloccare la schermata di accesso di Windows",
+    errPinRequired: "Inserisci il PIN Windows Hello per l'accesso automatico.",
+    btnLoginPc: "🔓 Accedi (PIN)",
+    btnLoggingIn: "Accesso...",
+    toastLoginSuccessTitle: "Accesso Windows riuscito",
+    toastLoginSuccessBody: "{name} sbloccato tramite PIN.",
+    toastLoginAlreadyTitle: "{name} già sbloccato",
+    toastLoginAlreadyBody: "La sessione Windows è già attiva.",
+    toastLoginFailedTitle: "Accesso Windows fallito",
     toastShutdownSentTitle: "Comando di spegnimento inviato",
     toastShutdownSentBody: "Segnale di spegnimento inviato a {name}.",
     toastShutdownFailedTitle: "Spegnimento non riuscito",
@@ -544,6 +622,19 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshPortDesc: "Padrão é 22",
     fieldSshOsLabel: "Sistema operacional do PC",
     fieldSshOsDesc: "Windows envia 'shutdown /s /t 0', Linux envia 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Login automático após WoL (PIN do Windows)",
+    fieldSshAutoLoginDesc:
+      "Faz login automaticamente no Windows usando seu PIN após Wake-on-LAN (ideal para Steam Remote Play)",
+    fieldSshPinLabel: "PIN do Windows Hello",
+    fieldSshPinDesc: "Enviado via SSH para desbloquear a tela de login do Windows",
+    errPinRequired: "Insira seu PIN do Windows Hello para o login automático.",
+    btnLoginPc: "🔓 Entrar (PIN)",
+    btnLoggingIn: "Entrando...",
+    toastLoginSuccessTitle: "Login no Windows concluído",
+    toastLoginSuccessBody: "{name} desbloqueado via PIN.",
+    toastLoginAlreadyTitle: "{name} desbloqueado",
+    toastLoginAlreadyBody: "A sessão do Windows já está ativa.",
+    toastLoginFailedTitle: "Falha no login do Windows",
     toastShutdownSentTitle: "Comando de desligamento enviado",
     toastShutdownSentBody: "Sinal de desligamento enviado para {name}.",
     toastShutdownFailedTitle: "Falha ao desligar",
@@ -623,6 +714,19 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshPortDesc: "Domyślnie 22",
     fieldSshOsLabel: "System operacyjny komputera",
     fieldSshOsDesc: "Windows wysyła 'shutdown /s /t 0', Linux wysyła 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Auto-logowanie po WoL (PIN Windows)",
+    fieldSshAutoLoginDesc:
+      "Automatycznie loguje użytkownika Windows kodem PIN po wybudzeniu (idealne dla Steam Remote Play)",
+    fieldSshPinLabel: "Kod PIN Windows Hello",
+    fieldSshPinDesc: "Wysyłany przez SSH w celu odblokowania ekranu logowania Windows",
+    errPinRequired: "Podaj kod PIN Windows Hello dla automatycznego logowania.",
+    btnLoginPc: "🔓 Zaloguj (PIN)",
+    btnLoggingIn: "Logowanie...",
+    toastLoginSuccessTitle: "Zalogowano do Windows",
+    toastLoginSuccessBody: "Odblokowano {name} za pomocą kodu PIN.",
+    toastLoginAlreadyTitle: "{name} odblokowany",
+    toastLoginAlreadyBody: "Sesja Windows jest już zalogowana.",
+    toastLoginFailedTitle: "Błąd logowania Windows",
     toastShutdownSentTitle: "Wysłano polecenie wyłączenia",
     toastShutdownSentBody: "Sygnał wyłączenia wysłany do {name}.",
     toastShutdownFailedTitle: "Błąd wyłączania",
@@ -702,6 +806,19 @@ const translations: Record<SupportedLocale, Translations> = {
     fieldSshPortDesc: "По умолчанию 22",
     fieldSshOsLabel: "Операционная система ПК",
     fieldSshOsDesc: "Windows отправляет 'shutdown /s /t 0', Linux отправляет 'systemctl poweroff'",
+    fieldSshAutoLoginLabel: "Автовход после WoL (PIN-код Windows)",
+    fieldSshAutoLoginDesc:
+      "Автоматически входит в Windows с помощью PIN-кода после пробуждения (идеально для Steam Remote Play)",
+    fieldSshPinLabel: "PIN-код Windows Hello",
+    fieldSshPinDesc: "Отправляется по SSH для разблокировки экрана входа Windows",
+    errPinRequired: "Введите PIN-код Windows Hello для автоматического входа.",
+    btnLoginPc: "🔓 Войти (PIN)",
+    btnLoggingIn: "Вход...",
+    toastLoginSuccessTitle: "Вход в Windows выполнен",
+    toastLoginSuccessBody: "{name} разблокирован с помощью PIN-кода.",
+    toastLoginAlreadyTitle: "{name} уже разблокирован",
+    toastLoginAlreadyBody: "Сеанс Windows уже активен.",
+    toastLoginFailedTitle: "Ошибка входа в Windows",
     toastShutdownSentTitle: "Команда выключения отправлена",
     toastShutdownSentBody: "Сигнал выключения отправлен на {name}.",
     toastShutdownFailedTitle: "Ошибка выключения",
