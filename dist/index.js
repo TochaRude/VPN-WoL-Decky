@@ -852,6 +852,55 @@ const sendWol = callable("send_wol");
 const shutdownTarget = callable("shutdown_target");
 const loginTarget = callable("login_target");
 
+const PLUGIN_BUTTON_STYLES = `
+  .vpn-wol-btn {
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    transition: background-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease !important;
+  }
+  .vpn-wol-btn-primary {
+    background-color: rgba(26, 159, 255, 0.26) !important;
+    color: #70c4ff !important;
+    border: 1px solid rgba(26, 159, 255, 0.55) !important;
+  }
+  .vpn-wol-btn-success {
+    background-color: rgba(46, 204, 113, 0.22) !important;
+    color: #7bed9f !important;
+    border: 1px solid rgba(46, 204, 113, 0.5) !important;
+  }
+  .vpn-wol-btn-danger {
+    background-color: rgba(220, 53, 69, 0.25) !important;
+    color: #ff9ea5 !important;
+    border: 1px solid rgba(220, 53, 69, 0.55) !important;
+  }
+  .vpn-wol-btn.gpfocus,
+  .vpn-wol-btn:focus,
+  .vpn-wol-btn:hover {
+    background-color: #ffffff !important;
+    color: #0e141b !important;
+    border-color: #ffffff !important;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5) !important;
+  }
+  .vpn-wol-btn-primary.gpfocus,
+  .vpn-wol-btn-primary:focus {
+    box-shadow: 0 0 0 2px #1a9fff, 0 0 10px rgba(26, 159, 255, 0.5) !important;
+  }
+  .vpn-wol-btn-success.gpfocus,
+  .vpn-wol-btn-success:focus {
+    box-shadow: 0 0 0 2px #2ecc71, 0 0 10px rgba(46, 204, 113, 0.5) !important;
+  }
+  .vpn-wol-btn-danger.gpfocus,
+  .vpn-wol-btn-danger:focus {
+    box-shadow: 0 0 0 2px #ff4d4f, 0 0 10px rgba(220, 53, 69, 0.55) !important;
+  }
+  .vpn-wol-password-field input,
+  .vpn-wol-password-field input[type="text"],
+  .vpn-wol-password-field input[type="password"] {
+    -webkit-text-security: disc !important;
+    text-security: disc !important;
+  }
+`;
+
 const ConfirmShutdownModal = ({ closeModal, targetName, onConfirm }) => {
   const t = SP_REACT.useMemo(() => getTranslations(), []);
   return SP_JSX.jsx(DFL.ModalRoot, {
@@ -860,6 +909,7 @@ const ConfirmShutdownModal = ({ closeModal, targetName, onConfirm }) => {
     children: SP_JSX.jsxs("div", {
       style: { display: "flex", flexDirection: "column", gap: "12px", padding: "8px 4px" },
       children: [
+        SP_JSX.jsx("style", { children: PLUGIN_BUTTON_STYLES }),
         SP_JSX.jsx("h2", {
           style: { margin: "0", fontSize: "18px", color: "#ffffff" },
           children: t.confirmShutdownTitle,
@@ -878,14 +928,14 @@ const ConfirmShutdownModal = ({ closeModal, targetName, onConfirm }) => {
           },
           children: [
             SP_JSX.jsx(DFL.DialogButton, {
+              className: "vpn-wol-btn",
               style: { flex: "1" },
               onClick: () => closeModal?.(),
               children: t.btnCancel,
             }),
             SP_JSX.jsx(DFL.DialogButton, {
+              className: "vpn-wol-btn vpn-wol-btn-danger",
               style: {
-                backgroundColor: "#dc3545",
-                color: "#ffffff",
                 fontWeight: 600,
                 flex: "1.2",
               },
@@ -949,6 +999,21 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
   );
   const [errorMsg, setErrorMsg] = SP_REACT.useState("");
   const [saving, setSaving] = SP_REACT.useState(false);
+  const modalRef = SP_REACT.useRef(null);
+
+  SP_REACT.useEffect(() => {
+    const root = modalRef.current;
+    if (!root) return;
+    const inputs = root.querySelectorAll(".vpn-wol-password-field input");
+    inputs.forEach((inp) => {
+      try {
+        inp.type = "password";
+        inp.style.setProperty("-webkit-text-security", "disc", "important");
+      } catch {
+        // ignore
+      }
+    });
+  }, [sshEnabled, sshOs, sshAutoLogin, routerPassword, sshPassword, sshPin]);
 
   const vpnOptions = [
     { data: "", label: t.fieldVpnNone },
@@ -1017,8 +1082,10 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
     onCancel: closeModal,
     closeModal: closeModal,
     children: SP_JSX.jsxs("div", {
+      ref: modalRef,
       style: { display: "flex", flexDirection: "column", gap: "10px", padding: "4px" },
       children: [
+        SP_JSX.jsx("style", { children: PLUGIN_BUTTON_STYLES }),
         SP_JSX.jsx("h2", {
           style: { margin: "0 0 6px 0", fontSize: "18px", color: "#ffffff" },
           children: existingTarget
@@ -1063,12 +1130,16 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
           selectedOption: vpnId,
           onChange: (opt) => setVpnId(String(opt.data ?? "")),
         }),
-        SP_JSX.jsx(DFL.TextField, {
-          label: t.fieldRouterPasswordLabel,
-          value: routerPassword,
-          bIsPassword: true,
-          onChange: (e) => setRouterPassword(e.target.value),
-          description: t.fieldRouterPasswordDesc,
+        SP_JSX.jsx("div", {
+          className: "vpn-wol-password-field",
+          children: SP_JSX.jsx(DFL.TextField, {
+            label: t.fieldRouterPasswordLabel,
+            value: routerPassword,
+            bIsPassword: true,
+            type: "password",
+            onChange: (e) => setRouterPassword(e.target.value),
+            description: t.fieldRouterPasswordDesc,
+          }),
         }),
         SP_JSX.jsx(DFL.TextField, {
           label: t.fieldRouterUserLabel,
@@ -1116,12 +1187,16 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
                   onChange: (e) => setSshUser(e.target.value),
                   description: t.fieldSshUserDesc,
                 }),
-                SP_JSX.jsx(DFL.TextField, {
-                  label: t.fieldSshPasswordLabel,
-                  value: sshPassword,
-                  bIsPassword: true,
-                  onChange: (e) => setSshPassword(e.target.value),
-                  description: t.fieldSshPasswordDesc,
+                SP_JSX.jsx("div", {
+                  className: "vpn-wol-password-field",
+                  children: SP_JSX.jsx(DFL.TextField, {
+                    label: t.fieldSshPasswordLabel,
+                    value: sshPassword,
+                    bIsPassword: true,
+                    type: "password",
+                    onChange: (e) => setSshPassword(e.target.value),
+                    description: t.fieldSshPasswordDesc,
+                  }),
                 }),
                 SP_JSX.jsx(DFL.DropdownItem, {
                   label: t.fieldSshOsLabel,
@@ -1150,12 +1225,16 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
                           onChange: (val) => setSshAutoLogin(val),
                         }),
                         sshAutoLogin
-                          ? SP_JSX.jsx(DFL.TextField, {
-                              label: t.fieldSshPinLabel,
-                              value: sshPin,
-                              bIsPassword: true,
-                              onChange: (e) => setSshPin(e.target.value),
-                              description: t.fieldSshPinDesc,
+                          ? SP_JSX.jsx("div", {
+                              className: "vpn-wol-password-field",
+                              children: SP_JSX.jsx(DFL.TextField, {
+                                label: t.fieldSshPinLabel,
+                                value: sshPin,
+                                bIsPassword: true,
+                                type: "password",
+                                onChange: (e) => setSshPin(e.target.value),
+                                description: t.fieldSshPinDesc,
+                              }),
                             })
                           : null,
                       ],
@@ -1175,9 +1254,8 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
           children: [
             existingTarget && onDelete
               ? SP_JSX.jsx(DFL.DialogButton, {
+                  className: "vpn-wol-btn vpn-wol-btn-danger",
                   style: {
-                    backgroundColor: "rgba(220, 53, 69, 0.35)",
-                    color: "#ff9ea5",
                     flex: "1",
                   },
                   disabled: saving,
@@ -1186,15 +1264,15 @@ const TargetModal = ({ closeModal, existingTarget, vpns, onSave, onDelete }) => 
                 })
               : null,
             SP_JSX.jsx(DFL.DialogButton, {
+              className: "vpn-wol-btn",
               style: { flex: "1" },
               disabled: saving,
               onClick: () => closeModal?.(),
               children: t.btnCancel,
             }),
             SP_JSX.jsx(DFL.DialogButton, {
+              className: "vpn-wol-btn vpn-wol-btn-primary",
               style: {
-                backgroundColor: "#1a9fff",
-                color: "#ffffff",
                 fontWeight: 600,
                 flex: "1.5",
               },
@@ -1490,6 +1568,7 @@ const Content = () => {
 
   return SP_JSX.jsxs("div", {
     children: [
+      SP_JSX.jsx("style", { children: PLUGIN_BUTTON_STYLES }),
       SP_JSX.jsxs(DFL.PanelSection, {
         title: t.vpnSectionTitle,
         spinner: loading,
@@ -1701,15 +1780,12 @@ const Content = () => {
                               },
                               children: [
                                 SP_JSX.jsx(DFL.DialogButton, {
+                                  className: "vpn-wol-btn vpn-wol-btn-primary",
                                   style: {
                                     flex: "1",
                                     padding: "8px 10px",
                                     fontSize: "13px",
                                     fontWeight: 600,
-                                    backgroundColor: needsVpnActivation
-                                      ? "#2980b9"
-                                      : "#1a9fff",
-                                    color: "#ffffff",
                                     overflow: "hidden",
                                     textOverflow: "ellipsis",
                                     whiteSpace: "nowrap",
@@ -1723,10 +1799,12 @@ const Content = () => {
                                     : t.btnWakePc,
                                 }),
                                 SP_JSX.jsx(DFL.DialogButton, {
+                                  className: "vpn-wol-btn",
                                   style: {
-                                    width: "auto",
-                                    minWidth: "42px",
-                                    padding: "8px 12px",
+                                    width: "40px",
+                                    minWidth: "40px",
+                                    maxWidth: "40px",
+                                    padding: "8px 0",
                                     fontSize: "14px",
                                   },
                                   onClick: () => openTargetModal(target),
@@ -1734,58 +1812,46 @@ const Content = () => {
                                 }),
                               ],
                             }),
-                            target.ssh_enabled && isOnline
-                              ? SP_JSX.jsxs(DFL.Focusable, {
+                            target.ssh_enabled &&
+                            isOnline &&
+                            target.ssh_auto_login &&
+                            target.ssh_pin &&
+                            (target.ssh_os ?? "windows") === "windows"
+                              ? SP_JSX.jsx(DFL.DialogButton, {
+                                  className: "vpn-wol-btn vpn-wol-btn-success",
                                   style: {
-                                    display: "flex",
-                                    flexDirection: "row",
-                                    gap: "6px",
                                     width: "100%",
+                                    padding: "8px 10px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
                                   },
-                                  children: [
-                                    target.ssh_auto_login &&
-                                    target.ssh_pin &&
-                                    (target.ssh_os ?? "windows") === "windows"
-                                      ? SP_JSX.jsx(DFL.DialogButton, {
-                                          style: {
-                                            flex: "1",
-                                            padding: "8px 10px",
-                                            fontSize: "13px",
-                                            fontWeight: 600,
-                                            backgroundColor: "rgba(46, 204, 113, 0.28)",
-                                            color: "#7bed9f",
-                                            border: "1px solid rgba(46, 204, 113, 0.5)",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                            whiteSpace: "nowrap",
-                                          },
-                                          disabled: Boolean(loggingInTargetIds[target.id]),
-                                          onClick: () => handleLoginTarget(target, false),
-                                          children: loggingInTargetIds[target.id]
-                                            ? t.btnLoggingIn
-                                            : t.btnLoginPc,
-                                        })
-                                      : null,
-                                    SP_JSX.jsx(DFL.DialogButton, {
-                                      style: {
-                                        flex: "1",
-                                        padding: "8px 10px",
-                                        fontSize: "13px",
-                                        fontWeight: 600,
-                                        backgroundColor: "rgba(220, 53, 69, 0.4)",
-                                        color: "#ff9ea5",
-                                        border: "1px solid rgba(220, 53, 69, 0.6)",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                      },
-                                      disabled: Boolean(shuttingDownTargetIds[target.id]),
-                                      onClick: () => handleShutdownTarget(target),
-                                      children: shuttingDownTargetIds[target.id]
-                                        ? t.btnShuttingDown
-                                        : t.btnShutdownPc,
-                                    }),
-                                  ],
+                                  disabled: Boolean(loggingInTargetIds[target.id]),
+                                  onClick: () => handleLoginTarget(target, false),
+                                  children: loggingInTargetIds[target.id]
+                                    ? t.btnLoggingIn
+                                    : t.btnLoginPc,
+                                })
+                              : null,
+                            target.ssh_enabled && isOnline
+                              ? SP_JSX.jsx(DFL.DialogButton, {
+                                  className: "vpn-wol-btn vpn-wol-btn-danger",
+                                  style: {
+                                    width: "100%",
+                                    padding: "8px 10px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  },
+                                  disabled: Boolean(shuttingDownTargetIds[target.id]),
+                                  onClick: () => handleShutdownTarget(target),
+                                  children: shuttingDownTargetIds[target.id]
+                                    ? t.btnShuttingDown
+                                    : t.btnShutdownPc,
                                 })
                               : null,
                           ],

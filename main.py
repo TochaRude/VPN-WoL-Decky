@@ -785,13 +785,12 @@ class Plugin:
                     if router_active is False:
                         results[tid] = {"online": False, "latency_ms": None}
                         return
-                    if router_active is True and any_vpn_active:
-                        # Avoid sending ICMP packets directly to PC IP over VPN during background polls
-                        results[tid] = {"online": True, "latency_ms": None}
-                        return
                 except Exception:
                     pass
 
+            # Always verify with a real ping to the PC so stale router host entries
+            # (e.g. FRITZ!Box keeping a recently powered-off PC marked as 'Online' for ~10-15 min)
+            # never cause a false Online status in the plugin.
             results[tid] = await self.ping_target(ip)
 
         await asyncio.gather(*[_check_one(t) for t in targets])

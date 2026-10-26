@@ -1,4 +1,4 @@
-import { FC, useMemo, useState } from "react";
+import { FC, useEffect, useMemo, useRef, useState } from "react";
 import {
   DialogButton,
   DropdownItem,
@@ -70,6 +70,21 @@ export const TargetModal: FC<TargetModalProps> = ({
   );
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [saving, setSaving] = useState<boolean>(false);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const root = modalRef.current;
+    if (!root) return;
+    const inputs = root.querySelectorAll<HTMLInputElement>(".vpn-wol-password-field input");
+    inputs.forEach((inp) => {
+      try {
+        inp.type = "password";
+        inp.style.setProperty("-webkit-text-security", "disc", "important");
+      } catch {
+        // ignore
+      }
+    });
+  }, [sshEnabled, sshOs, sshAutoLogin, routerPassword, sshPassword, sshPin]);
 
   const vpnOptions = [
     { data: "", label: t.fieldVpnNone },
@@ -136,7 +151,10 @@ export const TargetModal: FC<TargetModalProps> = ({
 
   return (
     <ModalRoot onCancel={closeModal} closeModal={closeModal}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "4px" }}>
+      <div
+        ref={modalRef}
+        style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "4px" }}
+      >
         <h2 style={{ margin: "0 0 6px 0", fontSize: "18px", color: "#ffffff" }}>
           {existingTarget
             ? formatString(t.modalTitleEdit, { name: existingTarget.name })
@@ -187,13 +205,16 @@ export const TargetModal: FC<TargetModalProps> = ({
           onChange={(opt) => setVpnId(String(opt.data ?? ""))}
         />
 
-        <TextField
-          label={t.fieldRouterPasswordLabel}
-          value={routerPassword}
-          bIsPassword={true}
-          onChange={(e) => setRouterPassword(e.target.value)}
-          description={t.fieldRouterPasswordDesc}
-        />
+        <div className="vpn-wol-password-field">
+          <TextField
+            label={t.fieldRouterPasswordLabel}
+            value={routerPassword}
+            bIsPassword={true}
+            {...({ type: "password" } as any)}
+            onChange={(e) => setRouterPassword(e.target.value)}
+            description={t.fieldRouterPasswordDesc}
+          />
+        </div>
 
         <TextField
           label={t.fieldRouterUserLabel}
@@ -247,13 +268,16 @@ export const TargetModal: FC<TargetModalProps> = ({
               description={t.fieldSshUserDesc}
             />
 
-            <TextField
-              label={t.fieldSshPasswordLabel}
-              value={sshPassword}
-              bIsPassword={true}
-              onChange={(e) => setSshPassword(e.target.value)}
-              description={t.fieldSshPasswordDesc}
-            />
+            <div className="vpn-wol-password-field">
+              <TextField
+                label={t.fieldSshPasswordLabel}
+                value={sshPassword}
+                bIsPassword={true}
+                {...({ type: "password" } as any)}
+                onChange={(e) => setSshPassword(e.target.value)}
+                description={t.fieldSshPasswordDesc}
+              />
+            </div>
 
             <DropdownItem
               label={t.fieldSshOsLabel}
@@ -284,13 +308,16 @@ export const TargetModal: FC<TargetModalProps> = ({
                 />
 
                 {sshAutoLogin && (
-                  <TextField
-                    label={t.fieldSshPinLabel}
-                    value={sshPin}
-                    bIsPassword={true}
-                    onChange={(e) => setSshPin(e.target.value)}
-                    description={t.fieldSshPinDesc}
-                  />
+                  <div className="vpn-wol-password-field">
+                    <TextField
+                      label={t.fieldSshPinLabel}
+                      value={sshPin}
+                      bIsPassword={true}
+                      {...({ type: "password" } as any)}
+                      onChange={(e) => setSshPin(e.target.value)}
+                      description={t.fieldSshPinDesc}
+                    />
+                  </div>
                 )}
               </>
             )}
@@ -308,9 +335,8 @@ export const TargetModal: FC<TargetModalProps> = ({
         >
           {existingTarget && onDelete && (
             <DialogButton
+              className="vpn-wol-btn vpn-wol-btn-danger"
               style={{
-                backgroundColor: "rgba(220, 53, 69, 0.35)",
-                color: "#ff9ea5",
                 flex: "1",
               }}
               disabled={saving}
@@ -321,6 +347,7 @@ export const TargetModal: FC<TargetModalProps> = ({
           )}
 
           <DialogButton
+            className="vpn-wol-btn"
             style={{ flex: "1" }}
             disabled={saving}
             onClick={() => closeModal?.()}
@@ -329,9 +356,8 @@ export const TargetModal: FC<TargetModalProps> = ({
           </DialogButton>
 
           <DialogButton
+            className="vpn-wol-btn vpn-wol-btn-primary"
             style={{
-              backgroundColor: "#1a9fff",
-              color: "#ffffff",
               fontWeight: 600,
               flex: "1.5",
             }}
