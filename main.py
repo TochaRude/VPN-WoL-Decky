@@ -1654,12 +1654,13 @@ public class DeckyWinUnlock {{
 
 try {{
     Add-Type -TypeDefinition $csCode -OutputAssembly $exePath -OutputType ConsoleApplication
-    $stOut = schtasks.exe /Create /TN $taskName /TR "`"$exePath`" --service" /SC ONCE /ST 00:00 /RU SYSTEM /RL HIGHEST /F 2>&1
+    $ErrorActionPreference = "Continue"
+    schtasks.exe /Create /TN $taskName /TR "`"$exePath`" --service" /SC ONCE /ST 00:00 /RU SYSTEM /RL HIGHEST /F >$null 2>$null
     if ($LASTEXITCODE -ne 0) {{
-        Write-Output ("ERR_SCHTASKS:" + ($stOut -join " "))
+        Write-Output "ERR_SCHTASKS"
         exit 1
     }}
-    schtasks.exe /Run /TN $taskName | Out-Null
+    schtasks.exe /Run /TN $taskName >$null 2>$null
 
     Start-Sleep -Milliseconds 400
     for ($i = 0; $i -lt 130; $i++) {{
@@ -1676,7 +1677,8 @@ try {{
         Write-Output "ERR_NO_STATUS"
     }}
 }} finally {{
-    schtasks.exe /Delete /TN $taskName /F 2>$null | Out-Null
+    $ErrorActionPreference = "Continue"
+    schtasks.exe /Delete /TN $taskName /F >$null 2>$null
     Get-Process -Name "decky_winunlock*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Remove-Item -Force $exePath, $statusPath -ErrorAction SilentlyContinue
 }}
@@ -1690,6 +1692,47 @@ try {{
             "powershell.exe -NoProfile -NonInteractive -InputFormat None -ExecutionPolicy Bypass "
             f'-Command "&([scriptblock]::Create((New-Object IO.StreamReader((New-Object IO.Compression.DeflateStream([IO.MemoryStream][Convert]::FromBase64String(\'{b64_deflate}\'),[IO.Compression.CompressionMode]::Decompress)),[Text.Encoding]::UTF8)).ReadToEnd()))"'
         )
+
+    def _get_ssh_identity_args(self) -> List[str]:
+        """
+        Discover SSH private keys in DECKY_USER_HOME/.ssh, /home/*/.ssh, and /root/.ssh
+        so SSH key authentication works seamlessly even when the plugin runs as root.
+        """
+        candidate_dirs: List[str] = []
+        for env_key in ("DECKY_USER_HOME", "HOME"):
+            val = os.environ.get(env_key, "").strip()
+            if val:
+                ssh_dir = os.path.join(val, ".ssh")
+                if ssh_dir not in candidate_dirs:
+                    candidate_dirs.append(ssh_dir)
+        decky_user = os.environ.get("DECKY_USER", "").strip()
+        if decky_user:
+            ssh_dir = os.path.join("/home", decky_user, ".ssh")
+            if ssh_dir not in candidate_dirs:
+                candidate_dirs.append(ssh_dir)
+        try:
+            if os.path.isdir("/home"):
+                for entry in sorted(os.listdir("/home")):
+                    ssh_dir = os.path.join("/home", entry, ".ssh")
+                    if ssh_dir not in candidate_dirs:
+                        candidate_dirs.append(ssh_dir)
+        except Exception:
+            pass
+        if "/root/.ssh" not in candidate_dirs:
+            candidate_dirs.append("/root/.ssh")
+
+        key_names = ("id_ed25519", "id_ecdsa", "id_rsa", "id_dsa")
+        identity_args: List[str] = []
+        seen_paths = set()
+        for d in candidate_dirs:
+            if not os.path.isdir(d):
+                continue
+            for kname in key_names:
+                kpath = os.path.join(d, kname)
+                if kpath not in seen_paths and os.path.isfile(kpath):
+                    seen_paths.add(kpath)
+                    identity_args.extend(["-i", kpath])
+        return identity_args
 
     async def _wait_for_tcp_port(
         self, ip: str, port: int, timeout_total: float = 35.0
@@ -1816,6 +1859,7 @@ try {{
                     "-o", "ServerAliveInterval=5",
                     "-o", "ServerAliveCountMax=3",
                 ]
+                ssh_args.extend(self._get_ssh_identity_args())
 
                 if ssh_password:
                     fd, askpass_path = tempfile.mkstemp(prefix="decky_askpass_", suffix=".sh")
@@ -1827,7 +1871,7 @@ try {{
                     extra_env["SSH_ASKPASS_REQUIRE"] = "force"
                     extra_env["DISPLAY"] = ":0"
                     ssh_args.extend(
-                        ["-o", "PreferredAuthentications=password,keyboard-interactive,publickey"]
+                        ["-o", "PreferredAuthentications=publickey,password,keyboard-interactive"]
                     )
                 else:
                     ssh_args.extend(["-o", "BatchMode=yes"])
@@ -1948,6 +1992,7 @@ try {{
                 "-o", "ServerAliveInterval=3",
                 "-o", "ServerAliveCountMax=1",
             ]
+            ssh_args.extend(self._get_ssh_identity_args())
 
             if ssh_password:
                 fd, askpass_path = tempfile.mkstemp(prefix="decky_askpass_", suffix=".sh")
@@ -1958,7 +2003,7 @@ try {{
                 extra_env["SSH_ASKPASS"] = askpass_path
                 extra_env["SSH_ASKPASS_REQUIRE"] = "force"
                 extra_env["DISPLAY"] = ":0"
-                ssh_args.extend(["-o", "PreferredAuthentications=password,keyboard-interactive,publickey"])
+                ssh_args.extend(["-o", "PreferredAuthentications=publickey,password,keyboard-interactive"])
             else:
                 ssh_args.extend(["-o", "BatchMode=yes"])
 
